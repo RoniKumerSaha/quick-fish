@@ -27,6 +27,7 @@ import {
   drawScene, drawFishingBobber, drawPreviewFish,
   shoreY, boatPos, bobberPos, rodTip, setRigLevel,
 } from '../render/scene.js';
+import { Weather } from '../render/weather.js';
 import {
   drawHUD, drawLog, drawCatchPopup, drawTensionMeter, drawUpgrades, drawShop,
   drawCollection, drawLocationSelect, drawHint, drawCastPrompt,
@@ -98,6 +99,11 @@ export class Game {
     this.levelUpBanner = 0;
     this.introTime = 0;
     this.mouseOverPanel = false;
+    // The weather of the current location. Each location has its own, so
+    // the Abyss is always storming and Sunny Bay is always clear.
+    this.weather = new Weather();
+    this.weather.enter(this.state.location);
+    this.weatherLocation = this.state.location;
   }
 
   // ------------------------------------------------------------- utilities
@@ -120,6 +126,16 @@ export class Game {
 
   update(dt) {
     this.t += dt;
+
+    // The weather keeps running whatever screen we are on, so the sky is
+    // already alive when you come back to the water.
+    this.weather.update(dt);
+    // A different location has different weather.
+    if (this.weatherLocation !== this.state.location) {
+      this.weatherLocation = this.state.location;
+      this.weather.enter(this.state.location);
+    }
+
     if (this.hintTimer > 0) {
       this.hintTimer -= dt;
       if (this.hintTimer <= 0) this.hint = '';
@@ -550,6 +566,7 @@ export class Game {
       lineFrom: tip,
       lineTo,
       tension: s ? s.tension : 0,
+      weather: this.weather,
     });
 
     if (showBobber && !hooked) {
@@ -602,6 +619,7 @@ export class Game {
     const hud = drawHUD(ctx, state, loc, this.t, {
       fullscreen: this.isFullscreen ? this.isFullscreen() : false,
       input: this.input,
+      weather: this.weather.current,
     });
     if (hud && hud.action === 'fullscreen' && this.onFullscreen) {
       this.onFullscreen();

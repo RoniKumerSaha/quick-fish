@@ -1561,19 +1561,28 @@ export function drawRod(ctx, x, y, len, bend = 0, color = '#6b4a34') {
  * the angler and the rod to exactly the numbers the sprite draws with.
  */
 export const RIG = {
-  deckHalfW: 92,
+  deckHalfW: 96,
   deckH: 13,
   legH: 98,
-  legFront: 66,
-  legBack: 34,
+  legFront: 72,
+  legBack: 38,
   legW: 9,
-  derrickX: -16,
-  derrickH: 124,
-  derrickBase: 19,
-  derrickTop: 8,
-  heliX: -62,
-  heliR: 25,
-  tankX: 62,
+  // The deck plan, from left to right, so nothing overlaps:
+  //
+  //   helideck | derrick | cabin | angler | crane
+  //
+  // The angler stands at anglerX and is never covered. The tanks live on a
+  // storage platform *below* the deck, so the walking deck stays clear.
+  heliX: -74,
+  heliR: 16,
+  derrickX: -42,
+  cabinX: -4,
+  cabinW: 24,
+  cabinH: 20,
+  radarX: -4,
+  craneX: 58,
+  tankX: -46,
+  tankY: 30,
   anglerX: 34,
   // The angler's feet land 55 units above his origin, and his hands are
   // 13 units to the right of it — the scene needs both to place him.
@@ -1583,21 +1592,80 @@ export const RIG = {
 };
 
 /**
- * Rig materials: weathered timber at level 0, steel from level 1 up.
+ * How the rig changes with each upgrade level.
+ *
+ * Every level has a different silhouette, not just a different colour, so
+ * a screenshot of the rig says how far the player has come.
  */
-function rigMaterials(level) {
-  if (level >= 1) {
-    return {
-      leg: '#79838f', legHi: '#b6c0cb', legDark: '#3f464f',
-      deck: '#68717d', deckHi: '#9aa5b1', deckDark: '#343a42',
-      brace: '#5b636e', tank: '#8a939e', tankHi: '#c0c9d4',
-    };
-  }
-  return {
+const RIG_PLAN = [
+  { // 0 — Timber Platform: a small deck and a short mast.
+    derrickH: 68, derrickBase: 13, derrickTop: 6, legs: 2, lower: false,
+  },
+  { // 1 — Steel Rig: taller, steel, a crane and a storage platform.
+    derrickH: 84, derrickBase: 14, derrickTop: 6, legs: 2, lower: true,
+  },
+  { // 2 — Offshore Rig: painted orange, a control cabin, extra legs.
+    derrickH: 96, derrickBase: 15, derrickTop: 6, legs: 3, lower: true,
+  },
+  { // 3 — Helideck Rig: a helideck on the far left.
+    derrickH: 106, derrickBase: 15, derrickTop: 6, legs: 3, lower: true,
+  },
+  { // 4 — Research Platform: a radar dish on the cabin roof.
+    derrickH: 116, derrickBase: 16, derrickTop: 6, legs: 4, lower: true,
+  },
+  { // 5 — The Ark: a flare boom burning on the derrick.
+    derrickH: 126, derrickBase: 17, derrickTop: 6, legs: 4, lower: true,
+  },
+];
+
+/**
+ * Rig materials, one palette per upgrade level.
+ *
+ * Each level gets its own colour scheme so the rig visibly changes as it is
+ * upgraded, not just in size: weathered timber, then steel, then painted
+ * orange offshore, then white research, then gold-and-teal.
+ */
+const RIG_PALETTES = [
+  { // 0 — Timber Platform
     leg: '#8b5a2b', legHi: '#c9924c', legDark: '#4a2e15',
     deck: '#a9713a', deckHi: '#d29a55', deckDark: '#54341a',
     brace: '#6b4a34', tank: '#9c7040', tankHi: '#d3a468',
-  };
+    accent: '#d9534f', cabin: '#c98d4a', cabinDark: '#7d5228',
+  },
+  { // 1 — Steel Rig
+    leg: '#79838f', legHi: '#b6c0cb', legDark: '#3f464f',
+    deck: '#68717d', deckHi: '#9aa5b1', deckDark: '#343a42',
+    brace: '#5b636e', tank: '#8a939e', tankHi: '#c0c9d4',
+    accent: '#f0a63c', cabin: '#8d97a3', cabinDark: '#4a525c',
+  },
+  { // 2 — Offshore Rig
+    leg: '#d9541f', legHi: '#ff9a5c', legDark: '#8c3110',
+    deck: '#c9491a', deckHi: '#ff8f4f', deckDark: '#6d2509',
+    brace: '#a53c14', tank: '#e8e2d4', tankHi: '#ffffff',
+    accent: '#ffd45e', cabin: '#e8e2d4', cabinDark: '#9a9083',
+  },
+  { // 3 — Helideck Rig
+    leg: '#4a6fa5', legHi: '#86aad6', legDark: '#2a4066',
+    deck: '#3f5f8f', deckHi: '#7199c8', deckDark: '#22334f',
+    brace: '#375482', tank: '#dfe6ee', tankHi: '#ffffff',
+    accent: '#5fd3e8', cabin: '#e4eaf2', cabinDark: '#8f9dae',
+  },
+  { // 4 — Research Platform
+    leg: '#2f6b63', legHi: '#5aa79c', legDark: '#1a423d',
+    deck: '#275c55', deckHi: '#4d978d', deckDark: '#153430',
+    brace: '#215049', tank: '#eef3f2', tankHi: '#ffffff',
+    accent: '#8ef0c8', cabin: '#eef3f2', cabinDark: '#93a5a3',
+  },
+  { // 5 — The Ark
+    leg: '#8a6a1e', legHi: '#e0b752', legDark: '#4f3c0d',
+    deck: '#6f5518', deckHi: '#c49a3c', deckDark: '#3d2c08',
+    brace: '#5c4612', tank: '#f4e7c4', tankHi: '#ffffff',
+    accent: '#ffe066', cabin: '#f4e7c4', cabinDark: '#9c8547',
+  },
+];
+
+function rigMaterials(level) {
+  return RIG_PALETTES[Math.max(0, Math.min(RIG_PALETTES.length - 1, level))];
 }
 
 /**
@@ -1726,10 +1794,17 @@ function drawDerrick(ctx, cx, baseY, height, baseHalf, topHalf, mat) {
 function drawHelideck(ctx, cx, cy, r, mat) {
   // The arm reaching back to the platform.
   ctx.strokeStyle = mat.brace;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.beginPath();
   ctx.moveTo(cx + r - 2, cy + 3);
-  ctx.lineTo(cx + r + 30, cy + 3);
+  ctx.lineTo(cx + r + 34, cy + 3);
+  ctx.stroke();
+  // A second brace under the arm, so it reads as a cantilever.
+  ctx.strokeStyle = mat.legDark;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx + r - 2, cy + 3);
+  ctx.lineTo(cx + r + 26, cy + 18);
   ctx.stroke();
 
   // The pad.
@@ -1757,7 +1832,158 @@ function drawHelideck(ctx, cx, cy, r, mat) {
 }
 
 /**
- * A pair of storage tanks on the deck.
+ * The control cabin on the deck — a windowed box with a lit window.
+ */
+function drawRigCabin(ctx, x, y, w, h, mat) {
+  // The body.
+  ctx.fillStyle = mat.cabin;
+  roundRect(ctx, x - w / 2, y - h, w, h, 3, mat.cabin);
+  ctx.fillStyle = mat.cabinDark;
+  ctx.fillRect(x - w / 2, y - 4, w, 4);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(x - w / 2, y - h, w, 1.5);
+
+  // The window band.
+  ctx.fillStyle = '#1c3f57';
+  roundRect(ctx, x - w / 2 + 4, y - h + 5, w - 8, h * 0.42, 2, '#1c3f57');
+  // A warm light in one pane.
+  ctx.fillStyle = 'rgba(255,212,94,0.85)';
+  ctx.fillRect(x - w / 2 + 6, y - h + 7, (w - 12) * 0.42, h * 0.42 - 4);
+
+  // A roof rail.
+  ctx.strokeStyle = mat.cabinDark;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x - w / 2 + 3, y - h - 4);
+  ctx.lineTo(x + w / 2 - 3, y - h - 4);
+  ctx.stroke();
+}
+
+/**
+ * A deck crane — a lattice jib with a hook on the end.
+ */
+function drawCrane(ctx, x, y, mat, t) {
+  // The pedestal.
+  ctx.fillStyle = mat.deckDark;
+  roundRect(ctx, x - 5, y - 10, 10, 10, 2, mat.deckDark);
+
+  // The jib, angled up and to the right.
+  const jibLen = 26;
+  const jibAngle = -0.7;
+  const jx = x + Math.cos(jibAngle) * jibLen;
+  const jy = y - 10 + Math.sin(jibAngle) * jibLen;
+
+  ctx.strokeStyle = mat.leg;
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x, y - 10);
+  ctx.lineTo(jx, jy);
+  ctx.stroke();
+
+  // The lattice inside the jib.
+  ctx.strokeStyle = mat.brace;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  const segs = 3;
+  for (let i = 0; i < segs; i++) {
+    const t0 = i / segs, t1 = (i + 1) / segs;
+    const p0x = x + (jx - x) * t0, p0y = y - 10 + (jy - (y - 10)) * t0;
+    const p1x = x + (jx - x) * t1, p1y = y - 10 + (jy - (y - 10)) * t1;
+    ctx.moveTo(p0x, p0y - 3);
+    ctx.lineTo(p1x, p1y + 3);
+    ctx.moveTo(p1x, p1y - 3);
+    ctx.lineTo(p0x, p0y + 3);
+  }
+  ctx.stroke();
+
+  // The hook, swinging gently.
+  const swing = Math.sin(t * 1.3) * 0.18;
+  const hx = jx + Math.sin(swing) * 11;
+  const hy = jy + Math.cos(swing) * 11;
+  ctx.strokeStyle = 'rgba(230,238,246,0.75)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(jx, jy);
+  ctx.lineTo(hx, hy);
+  ctx.stroke();
+  ctx.strokeStyle = mat.tankHi;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(hx, hy + 2, 3, Math.PI * 0.15, Math.PI * 0.85, true);
+  ctx.stroke();
+}
+
+/**
+ * A radar dish on a short mast, slowly turning.
+ */
+function drawRadarDish(ctx, x, y, r, t, mat) {
+  // The mast.
+  ctx.strokeStyle = mat.brace;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y - 14);
+  ctx.stroke();
+
+  // The dish, tilted and turning.
+  const spin = t * 0.8;
+  const tilt = 0.5 + Math.sin(spin) * 0.22;
+  ctx.save();
+  ctx.translate(x, y - 16);
+  ctx.rotate(tilt);
+  ctx.fillStyle = mat.tank;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r * 0.55, r, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = mat.deckDark;
+  ctx.lineWidth = 1.4;
+  ctx.stroke();
+  // The feed arm.
+  ctx.strokeStyle = mat.brace;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(r * 0.5, 0);
+  ctx.stroke();
+  ctx.fillStyle = mat.accent;
+  ctx.beginPath();
+  ctx.arc(r * 0.5, 0, 2.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * An orange lifeboat, slung under the rail on the big rigs.
+ */
+function drawLifeBoat(ctx, x, y, mat) {
+  // The davit arms holding it.
+  ctx.strokeStyle = mat.brace;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x - 14, y - 13);
+  ctx.lineTo(x - 10, y - 4);
+  ctx.moveTo(x + 14, y - 13);
+  ctx.lineTo(x + 10, y - 4);
+  ctx.stroke();
+
+  // The boat itself.
+  ctx.fillStyle = '#e8622a';
+  ctx.beginPath();
+  ctx.moveTo(x - 13, y - 4);
+  ctx.quadraticCurveTo(x - 15, y + 3, x - 8, y + 4);
+  ctx.lineTo(x + 8, y + 4);
+  ctx.quadraticCurveTo(x + 15, y + 3, x + 13, y - 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillRect(x - 11, y - 3, 22, 1.6);
+  ctx.fillStyle = '#c24d1c';
+  ctx.fillRect(x - 13, y - 5, 26, 2);
+}
+
+/**
+ * A pair of storage tanks.
  */
 function drawTanks(ctx, x, y, mat) {
   for (let i = 0; i < 2; i++) {
@@ -1776,16 +2002,24 @@ function drawTanks(ctx, x, y, mat) {
 /**
  * The offshore rig the angler fishes from.
  *
- * (x, y) is the middle of the deck surface. The rig grows a little with
- * every upgrade: timber at level 0, then steel, a helideck, and finally a
- * flare boom burning at the end of the derrick.
+ * (x, y) is the middle of the deck surface. The rig grows and changes shape
+ * with every upgrade, so a screenshot of the rig tells you how far the
+ * player has come:
+ *
+ *   0  Timber Platform — a small wooden deck on four stilts.
+ *   1  Steel Rig       — steel legs, a lattice derrick, a crane.
+ *   2  Offshore Rig    — painted orange, a control cabin, more legs.
+ *   3  Helideck Rig    — a helideck on the left of the deck.
+ *   4  Research Plat.  — a bigger cabin, a radar dish, a lifeboat.
+ *   5  The Ark         — gold and teal, a lit crown, sonar pods.
  *
  * @param {number} level  the rig upgrade level
  * @param {number} t      elapsed time, for the blinking lights
  */
 export function drawOilRig(ctx, x, y, level = 0, t = 0) {
-  const s = 1 + level * 0.13;
+  const s = 1 + level * 0.115;
   const mat = rigMaterials(level);
+  const plan = RIG_PLAN[Math.max(0, Math.min(RIG_PLAN.length - 1, level))];
 
   ctx.save();
   ctx.translate(x, y);
@@ -1813,6 +2047,18 @@ export function drawOilRig(ctx, x, y, level = 0, t = 0) {
     drawRigLeg(ctx, lx, legTop, legBot, RIG.legW, mat, false);
   }
 
+  // ---- Extra legs on the bigger rigs, so the structure grows outwards.
+  if (plan.legs >= 3) {
+    for (const lx of [-RIG.legFront - 22, RIG.legFront + 22]) {
+      drawRigLeg(ctx, lx, legTop + 8, legBot - 34, RIG.legW * 0.8, mat, true);
+    }
+  }
+  if (plan.legs >= 4) {
+    for (const lx of [-RIG.legFront - 38, RIG.legFront + 38]) {
+      drawRigLeg(ctx, lx, legTop + 16, legBot - 52, RIG.legW * 0.7, mat, true);
+    }
+  }
+
   // ---- Bracing across the front legs: one big X plus two ties.
   ctx.strokeStyle = mat.brace;
   ctx.lineWidth = 2.5;
@@ -1834,21 +2080,49 @@ export function drawOilRig(ctx, x, y, level = 0, t = 0) {
   // ---- Deck.
   drawRigDeck(ctx, halfW, RIG.deckH, mat);
 
-  // ---- Deck furniture.
-  if (level >= 2) drawHelideck(ctx, RIG.heliX, -2, RIG.heliR, mat);
-  drawTanks(ctx, RIG.tankX, 0, mat);
+  // ---- The storage platform under the deck, with the tanks on it.
+  //
+  // It hangs below the walking deck so the deck itself stays clear for the
+  // angler, and it gives the rig a second storey.
+  if (plan.lower) {
+    const py = RIG.tankY;
+    ctx.fillStyle = mat.deckDark;
+    ctx.fillRect(RIG.tankX - 26, py, 52, 4);
+    ctx.fillStyle = mat.deck;
+    ctx.fillRect(RIG.tankX - 26, py, 52, 1.5);
+    // The brackets holding it up.
+    ctx.strokeStyle = mat.legDark;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(RIG.tankX - 20, py);
+    ctx.lineTo(RIG.tankX - 14, RIG.deckH + 2);
+    ctx.moveTo(RIG.tankX + 20, py);
+    ctx.lineTo(RIG.tankX + 14, RIG.deckH + 2);
+    ctx.stroke();
+    drawTanks(ctx, RIG.tankX, py, mat);
+  }
+
+  // ---- Deck furniture, which changes with every level.
+  //
+  // Level 0 is a bare platform, so each step up adds a new piece of
+  // structure. The deck plan keeps the angler (x = 34) clear: the helideck,
+  // derrick and cabin go on the left, the crane on the right.
+  if (level >= 3) drawHelideck(ctx, RIG.heliX, -3, RIG.heliR, mat);
+  if (level >= 2) drawRigCabin(ctx, RIG.cabinX, 0, RIG.cabinW, RIG.cabinH, mat);
+  if (level >= 4) drawRadarDish(ctx, RIG.radarX, -RIG.cabinH - 4, 12, t, mat);
+  if (level >= 1) drawCrane(ctx, RIG.craneX, -2, mat, t);
 
   // ---- Derrick.
-  drawDerrick(ctx, RIG.derrickX, -2, RIG.derrickH, RIG.derrickBase, RIG.derrickTop, mat);
+  drawDerrick(ctx, RIG.derrickX, -2, plan.derrickH, plan.derrickBase, plan.derrickTop, mat);
 
   // Crown block on top of the derrick.
-  const topY = -2 - RIG.derrickH;
+  const topY = -2 - plan.derrickH;
   ctx.fillStyle = mat.deckDark;
-  roundRect(ctx, RIG.derrickX - RIG.derrickTop - 5, topY - 11,
-    (RIG.derrickTop + 5) * 2, 11, 3, mat.deckDark);
+  roundRect(ctx, RIG.derrickX - plan.derrickTop - 5, topY - 11,
+    (plan.derrickTop + 5) * 2, 11, 3, mat.deckDark);
   ctx.fillStyle = mat.tank;
-  ctx.fillRect(RIG.derrickX - RIG.derrickTop - 5, topY - 11,
-    (RIG.derrickTop + 5) * 2, 3);
+  ctx.fillRect(RIG.derrickX - plan.derrickTop - 5, topY - 11,
+    (plan.derrickTop + 5) * 2, 3);
 
   // The aviation warning light.
   const blink = Math.sin(t * 3.2) > 0;
@@ -1866,27 +2140,33 @@ export function drawOilRig(ctx, x, y, level = 0, t = 0) {
     ctx.restore();
   }
 
-  // ---- Flare boom, on the biggest rigs.
-  if (level >= 4) {
-    const bx = RIG.derrickX - 44;
-    const by = -RIG.derrickH * 0.74;
+  // ---- Flare boom, on the very biggest rig — the Ark's signature.
+  //
+  // It reaches out to the *right* of the derrick, over the cabin, so it
+  // never collides with the helideck on the left.
+  if (level >= 5) {
+    const bx = RIG.derrickX + 46;
+    const by = -plan.derrickH * 0.62;
     ctx.strokeStyle = mat.leg;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.moveTo(RIG.derrickX - 6, topY + 16);
+    ctx.moveTo(RIG.derrickX + 6, topY + 16);
     ctx.lineTo(bx, by);
     ctx.stroke();
+    // The burner housing at the tip.
+    ctx.fillStyle = mat.deckDark;
+    roundRect(ctx, bx - 5, by - 6, 10, 12, 2, mat.deckDark);
 
     const flick = 0.7 + Math.sin(t * 9) * 0.3;
     ctx.save();
     ctx.globalAlpha = 0.9;
     ctx.fillStyle = '#ff8a2a';
     ctx.beginPath();
-    ctx.ellipse(bx, by - 7 * flick, 5, 10 * flick, 0, 0, Math.PI * 2);
+    ctx.ellipse(bx, by - 8 * flick, 5, 11 * flick, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ffe066';
     ctx.beginPath();
-    ctx.ellipse(bx, by - 4 * flick, 2.4, 5 * flick, 0, 0, Math.PI * 2);
+    ctx.ellipse(bx, by - 5 * flick, 2.4, 5 * flick, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1992,32 +2272,58 @@ export function drawSeaweed(ctx, x, y, h = 16, color = '#2f7a4a') {
  * @param {number} t  time, for the gentle rock of the wreck
  */
 export function drawShipwreck(ctx, x, y, s = 1, t = 0) {
+  // Local y of the waterline. The hull runs from -14 (deck) to 34 (keel),
+  // so the sea cuts across it a little above the middle.
+  const WATERLINE = 10;
+
   ctx.save();
   ctx.translate(x, y);
+  // Move the origin to the waterline, so the wreck rolls about the point
+  // where it meets the sea rather than about the deck.
+  ctx.translate(0, -WATERLINE);
   // It rolls slowly in the swell.
   ctx.rotate(Math.sin(t * 0.5) * 0.035 - 0.16);
   ctx.scale(s, s);
 
-  const wood = '#5a4433';
+  const wood = '#6b4f38';
   const woodDark = '#3b2c21';
-  const woodLit = '#7a5f45';
+  const woodLit = '#96754f';
 
-  // --- Hull. A curved belly, cut open on the right.
+  // The hull outline, reused for the fill and for the underwater tint.
+  const hullPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(-62, 0);
+    // Keel and belly, curving up to the stern.
+    ctx.quadraticCurveTo(-40, 30, -6, 34);
+    ctx.quadraticCurveTo(18, 36, 30, 12);
+    // The broken end — a ragged edge rather than a clean cut.
+    ctx.lineTo(38, 16);
+    ctx.lineTo(30, 2);
+    ctx.lineTo(40, -6);
+    ctx.lineTo(31, -14);
+    // Deck line back to the stern.
+    ctx.lineTo(-58, -14);
+    ctx.quadraticCurveTo(-64, -8, -62, 0);
+    ctx.closePath();
+  };
+
+  // --- The far mast, drawn first so the near one overlaps it.
+  ctx.strokeStyle = woodDark;
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(-62, 0);
-  // Keel and belly, curving up to the stern.
-  ctx.quadraticCurveTo(-40, 30, -6, 34);
-  ctx.quadraticCurveTo(18, 36, 30, 12);
-  // The broken end — a ragged edge rather than a clean cut.
-  ctx.lineTo(38, 16);
-  ctx.lineTo(30, 2);
-  ctx.lineTo(40, -6);
-  ctx.lineTo(31, -14);
-  // Deck line back to the stern.
-  ctx.lineTo(-58, -14);
-  ctx.quadraticCurveTo(-64, -8, -62, 0);
-  ctx.closePath();
+  ctx.moveTo(2, -12);
+  ctx.lineTo(14, -66);
+  ctx.stroke();
+  // Its snapped yard, hanging askew.
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(8, -50);
+  ctx.lineTo(30, -44);
+  ctx.stroke();
 
+  // --- Hull.
+  hullPath();
   const g = ctx.createLinearGradient(0, -14, 0, 34);
   g.addColorStop(0, woodLit);
   g.addColorStop(0.45, wood);
@@ -2026,6 +2332,19 @@ export function drawShipwreck(ctx, x, y, s = 1, t = 0) {
   ctx.fill();
   ctx.strokeStyle = '#241a13';
   ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // --- A raised stern castle, so the ship has a profile.
+  ctx.fillStyle = woodDark;
+  ctx.beginPath();
+  ctx.moveTo(-62, -14);
+  ctx.lineTo(-62, -30);
+  ctx.lineTo(-44, -30);
+  ctx.quadraticCurveTo(-38, -22, -40, -14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#241a13';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   // --- Planking on the hull.
@@ -2075,7 +2394,7 @@ export function drawShipwreck(ctx, x, y, s = 1, t = 0) {
   ctx.moveTo(-34, -46);
   ctx.lineTo(-6, -42);
   ctx.stroke();
-  ctx.fillStyle = 'rgba(206,196,172,0.75)';
+  ctx.fillStyle = 'rgba(216,206,182,0.85)';
   ctx.beginPath();
   ctx.moveTo(-32, -45);
   ctx.quadraticCurveTo(-20, -32, -8, -41);
@@ -2091,10 +2410,26 @@ export function drawShipwreck(ctx, x, y, s = 1, t = 0) {
   ctx.quadraticCurveTo(-78, 4, -96, 18);
   ctx.stroke();
 
+  // --- The part of the hull below the waterline, tinted by the sea.
+  //
+  // The clip follows the hull's own shape, so only the wood under the
+  // water goes blue — otherwise a rectangle of sea is painted over the
+  // whole scene.
+  ctx.save();
+  hullPath();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(16,52,92,0.62)';
+  ctx.fillRect(-100, WATERLINE, 200, 60);
+  ctx.restore();
+
   // --- Water lapping at the hull.
-  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
   ctx.beginPath();
-  ctx.ellipse(-18, 22, 52, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(-18, WATERLINE, 52, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.13)';
+  ctx.beginPath();
+  ctx.ellipse(10, WATERLINE + 2, 26, 3.5, 0, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -2238,6 +2573,65 @@ export function drawDeadTree(ctx, x, y, s = 1, t = 0) {
     const p = 0.5 + Math.sin(t * 0.8 + i) * 0.2;
     ctx.beginPath();
     ctx.arc(-24 + i * 12, -56 - Math.sin(i * 2) * 14, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * A sunken mast breaking the surface — the landmark of the Deep Ocean.
+ *
+ * The waterline cuts the mast off, so only the part above it is drawn and
+ * a darker reflection trails underneath.
+ */
+export function drawSunkenMast(ctx, x, y, s = 1, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+
+  const wood = '#243352';
+  const woodLit = '#33456b';
+
+  // The hull remnant below the waterline, drawn first so the mast sits on it.
+  ctx.fillStyle = 'rgba(18,28,52,0.75)';
+  ctx.beginPath();
+  ctx.moveTo(-26, 0);
+  ctx.quadraticCurveTo(-30, 18, -12, 24);
+  ctx.lineTo(18, 22);
+  ctx.quadraticCurveTo(30, 12, 24, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // The mast, leaning.
+  ctx.strokeStyle = wood;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.moveTo(-2, 2);
+  ctx.quadraticCurveTo(-10, -42, -20, -84);
+  ctx.stroke();
+
+  // A broken yard, hanging off to one side.
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = woodLit;
+  ctx.beginPath();
+  ctx.moveTo(-13, -56);
+  ctx.lineTo(22, -66);
+  ctx.stroke();
+
+  // Snapped rope trailing from the yard.
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(160,180,210,0.6)';
+  ctx.beginPath();
+  ctx.moveTo(20, -65);
+  ctx.quadraticCurveTo(26, -40 + Math.sin(t * 0.9) * 3, 18, -14);
+  ctx.stroke();
+
+  // A few barnacles on the mast.
+  ctx.fillStyle = 'rgba(120,150,190,0.5)';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.arc(-8 - i * 3.5, -12 - i * 18, 2, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.restore();

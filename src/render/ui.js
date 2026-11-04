@@ -13,7 +13,7 @@ import {
   woodPanel, titleBanner, THEME, lighten, darken, mixHex,
   roundRect, roundRectPath, roundRectStroke, vGradientRound,
 } from '../engine/gfx.js';
-import { FISH_BY_ID, TIERS, UPGRADES, LOCATIONS } from '../game/content.js';
+import { FISH_BY_ID, TIERS, UPGRADES, LOCATIONS, WEATHER_BY_ID } from '../game/content.js';
 import { locationRequirements } from '../game/state.js';
 import { W, H } from '../engine/view.js';
 import {
@@ -234,14 +234,91 @@ export function drawHUD(ctx, state, loc, t, opts = {}) {
   const pbw = Math.max(52, textWidth(name, 17, 800));
   bar(ctx, pbx, plaqueY + 27, pbw, 6, locationProgress(state, loc), '#f0c33c', '#15304f', '#0e2340');
 
-  // Sun icon — a moon for the night-time locations.
-  if (loc.id === 'the_abyss') {
-    drawMoonIcon(ctx, nx + nw - 22, plaqueY + 20);
-  } else {
-    drawSunIcon(ctx, nx + nw - 22, plaqueY + 20);
-  }
+  // Weather glyph — the weather the place is having right now.
+  const wx = nx + nw - 22;
+  drawWeatherIcon(ctx, wx, plaqueY + 20, opts.weather?.id || loc.weather);
 
   return fsClicked ? { action: 'fullscreen' } : null;
+}
+
+/**
+ * A small glyph for the weather: sun, rain, storm, fog or snow.
+ */
+export function drawWeatherIcon(ctx, cx, cy, weatherId) {
+  switch (weatherId) {
+    case 'rain':
+      drawRainIcon(ctx, cx, cy);
+      break;
+    case 'storm':
+      drawStormIcon(ctx, cx, cy);
+      break;
+    case 'fog':
+      drawFogIcon(ctx, cx, cy);
+      break;
+    case 'snow':
+      drawSnowIcon(ctx, cx, cy);
+      break;
+    default:
+      drawSunIcon(ctx, cx, cy);
+  }
+}
+
+function drawRainIcon(ctx, cx, cy) {
+  ctx.fillStyle = '#8ea6c4';
+  ctx.beginPath();
+  ctx.arc(cx - 2, cy - 5, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#a9c8ea';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - 5, cy + 4); ctx.lineTo(cx - 7, cy + 9);
+  ctx.moveTo(cx + 1, cy + 4); ctx.lineTo(cx - 1, cy + 9);
+  ctx.moveTo(cx + 6, cy + 4); ctx.lineTo(cx + 4, cy + 9);
+  ctx.stroke();
+}
+
+function drawStormIcon(ctx, cx, cy) {
+  ctx.fillStyle = '#6b7891';
+  ctx.beginPath();
+  ctx.arc(cx - 2, cy - 5, 8, 0, Math.PI * 2);
+  ctx.fill();
+  // The bolt.
+  ctx.fillStyle = '#ffd45e';
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy - 1);
+  ctx.lineTo(cx - 4, cy + 5);
+  ctx.lineTo(cx - 1, cy + 5);
+  ctx.lineTo(cx - 3, cy + 11);
+  ctx.lineTo(cx + 5, cy + 3);
+  ctx.lineTo(cx + 1, cy + 3);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFogIcon(ctx, cx, cy) {
+  ctx.strokeStyle = '#c6d4e6';
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, cy - 4); ctx.lineTo(cx + 9, cy - 4);
+  ctx.moveTo(cx - 6, cy + 1); ctx.lineTo(cx + 7, cy + 1);
+  ctx.moveTo(cx - 9, cy + 6); ctx.lineTo(cx + 6, cy + 6);
+  ctx.stroke();
+}
+
+function drawSnowIcon(ctx, cx, cy) {
+  ctx.strokeStyle = '#dbe8f7';
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  for (const [dx, dy] of [[0, 0], [-7, 5], [7, 5]]) {
+    const x = cx + dx, y = cy + dy;
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y); ctx.lineTo(x + 4, y);
+    ctx.moveTo(x - 2, y - 3.5); ctx.lineTo(x + 2, y + 3.5);
+    ctx.moveTo(x - 2, y + 3.5); ctx.lineTo(x + 2, y - 3.5);
+    ctx.stroke();
+  }
 }
 
 /**
@@ -1178,6 +1255,16 @@ export function drawLocationSelect(ctx, state, input, t, rect_, scroll) {
         drawText(ctx, fitText(loc.tagline, line2Max, 14), textX, ry + 36, {
           color: THEME.inkSoft, size: 14, weight: 600,
         });
+        // The weather that place is having, with its glyph.
+        const wName = WEATHER_BY_ID[loc.weather]?.name || '';
+        if (wName) {
+          const gw = textWidth(wName, 13, 700) + 26;
+          const gx = row.x + row.w - gw - 12;
+          drawWeatherIcon(ctx, gx + 8, ry + 42, loc.weather);
+          drawText(ctx, wName, gx + 18, ry + 37, {
+            color: '#5c4527', size: 13, weight: 700,
+          });
+        }
       } else {
         drawText(ctx, fitText(locationRequirementText(state, loc), line2Max, 14), textX, ry + 36, {
           color: '#a05040', size: 14, weight: 700,
@@ -1204,16 +1291,19 @@ export function drawLocationSelect(ctx, state, input, t, rect_, scroll) {
  */
 function drawLocationThumb(ctx, loc, x, y, w, h, t) {
   const horizon = y + h * 0.5;
+  const wx = WEATHER_BY_ID[loc.weather];
 
+  // The weather tints the sky, the same way it tints the real scene.
+  const tint = wx?.skyTint || [1, 1, 1];
   const skyG = ctx.createLinearGradient(0, y, 0, horizon);
-  skyG.addColorStop(0, loc.sky[0]);
-  skyG.addColorStop(1, loc.sky[1]);
+  skyG.addColorStop(0, tintHex(loc.sky[0], tint));
+  skyG.addColorStop(1, tintHex(loc.sky[1], tint));
   ctx.fillStyle = skyG;
   ctx.fillRect(x, y, w, horizon - y);
 
   const watG = ctx.createLinearGradient(0, horizon, 0, y + h);
-  watG.addColorStop(0, loc.water[0]);
-  watG.addColorStop(1, loc.water[1]);
+  watG.addColorStop(0, tintHex(loc.water[0], tint));
+  watG.addColorStop(1, tintHex(loc.water[1], tint));
   ctx.fillStyle = watG;
   ctx.fillRect(x, horizon, w, y + h - horizon);
 
@@ -1324,6 +1414,61 @@ function drawLocationThumb(ctx, loc, x, y, w, h, t) {
   // The seabed along the bottom.
   ctx.fillStyle = loc.sand;
   ctx.fillRect(x, y + h - 4, w, 4);
+
+  // A touch of the weather, so the thumbnail shows it too.
+  drawThumbWeather(ctx, loc.weather, x, y, w, h, horizon, t);
+}
+
+/**
+ * The weather painted into a location thumbnail.
+ */
+function drawThumbWeather(ctx, weatherId, x, y, w, h, horizon, t) {
+  if (weatherId === 'rain' || weatherId === 'storm') {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(200,222,245,0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < 26; i++) {
+      const rx = x + ((i * 13 + t * 40) % w);
+      const ry = y + ((i * 29 + t * 130) % h);
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx - 2.5, ry + 6);
+    }
+    ctx.stroke();
+    ctx.restore();
+  } else if (weatherId === 'snow') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    for (let i = 0; i < 18; i++) {
+      const rx = x + ((i * 17 + Math.sin(t + i) * 6 + t * 12) % w + w) % w;
+      const ry = y + ((i * 23 + t * 22) % h);
+      ctx.beginPath();
+      ctx.arc(rx, ry, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  } else if (weatherId === 'fog') {
+    ctx.save();
+    const g = ctx.createLinearGradient(0, horizon - 18, 0, y + h);
+    g.addColorStop(0, 'rgba(228,238,248,0.15)');
+    g.addColorStop(0.4, 'rgba(228,238,248,0.8)');
+    g.addColorStop(1, 'rgba(228,238,248,0.35)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x, horizon - 18, w, h);
+    ctx.restore();
+  }
+}
+
+/**
+ * Multiply a hex colour by a tint triple.
+ */
+function tintHex(hex, tint) {
+  const n = parseInt(hex.slice(1), 16);
+  const rr = Math.round(((n >> 16) & 255) * tint[0]);
+  const gg = Math.round(((n >> 8) & 255) * tint[1]);
+  const bb = Math.round((n & 255) * tint[2]);
+  const c = (v) => Math.max(0, Math.min(255, v));
+  return `rgb(${c(rr)},${c(gg)},${c(bb)})`;
 }
 
 /**

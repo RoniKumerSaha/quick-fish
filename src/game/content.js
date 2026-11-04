@@ -561,6 +561,7 @@ export const LOCATIONS = [
     waterDeep: '#14467a',
     sand: '#e8c98a',
     ambience: 'shore',
+    weather: 'clear',
     unlock: { coins: 0, boat: 0, rod: 0, line: 0, bait: 0 },
     blurb: 'Where every fisherman starts. The water is warm and the fish are small.',
   },
@@ -573,6 +574,7 @@ export const LOCATIONS = [
     waterDeep: '#123c68',
     sand: '#9a9a8a',
     ambience: 'rocks',
+    weather: 'rain',
     unlock: { coins: 1200, boat: 1, rod: 1, line: 1, bait: 0 },
     blurb: 'Cliffsides full of hiding squid and flatter, angrier flounder.',
   },
@@ -585,6 +587,7 @@ export const LOCATIONS = [
     waterDeep: '#0c2f57',
     sand: '#5f7a8a',
     ambience: 'deep',
+    weather: 'fog',
     unlock: { coins: 4500, boat: 2, rod: 2, line: 2, bait: 1 },
     blurb: 'The light stops reaching. Bring the good line.',
   },
@@ -597,6 +600,7 @@ export const LOCATIONS = [
     waterDeep: '#0f5a72',
     sand: '#e0a0b0',
     ambience: 'reef',
+    weather: 'snow',
     unlock: { coins: 14000, boat: 3, rod: 2, line: 2, bait: 1 },
     blurb: 'Every third fish is worth more than your boat. Also, they sting.',
   },
@@ -609,10 +613,112 @@ export const LOCATIONS = [
     waterDeep: '#040a18',
     sand: '#2a3350',
     ambience: 'abyss',
+    weather: 'storm',
     unlock: { coins: 20000, boat: 4, rod: 3, line: 3, bait: 3 },
     blurb: 'Lights that are not lights. Shapes that are not shapes. Bring everything.',
   },
 ];
+
+/**
+ * Weather.
+ *
+ * Each location has its own weather, so every part of the world feels
+ * different the moment you arrive:
+ *
+ *   clear  — bright sun, calm water, long reflections.
+ *   rain   — a grey downpour, ripples on the surface, dim light.
+ *   storm  — black clouds, lightning, big rolling waves.
+ *   fog    — thick mist, everything beyond the rig fades out.
+ *   snow   — freezing, fat flakes drifting down, pale and washed out.
+ *
+ * `skyTint` is multiplied over the location's own sky, so each place keeps
+ * its own colours while the weather changes the light.
+ */
+export const WEATHER = [
+  {
+    id: 'clear',
+    name: 'Clear',
+    skyTint: [1, 1, 1],
+    sunAlpha: 1,
+    cloudAlpha: 1,
+    waveScale: 1,
+    precip: null,
+    fog: 0,
+    lightning: false,
+    // How strongly the weather dims the water and the whole scene.
+    dim: 0,
+  },
+  {
+    id: 'rain',
+    name: 'Rain',
+    skyTint: [0.62, 0.66, 0.72],
+    sunAlpha: 0.25,
+    cloudAlpha: 1.6,
+    waveScale: 1.5,
+    precip: { kind: 'rain', count: 220, speed: 620, slant: 0.32 },
+    fog: 0.1,
+    lightning: false,
+    dim: 0.14,
+  },
+  {
+    id: 'storm',
+    name: 'Storm',
+    skyTint: [0.34, 0.38, 0.5],
+    sunAlpha: 0,
+    cloudAlpha: 2.2,
+    waveScale: 2.3,
+    precip: { kind: 'rain', count: 320, speed: 900, slant: 0.55 },
+    fog: 0.16,
+    lightning: true,
+    dim: 0.3,
+  },
+  {
+    id: 'fog',
+    name: 'Fog',
+    skyTint: [0.86, 0.88, 0.9],
+    sunAlpha: 0.35,
+    cloudAlpha: 1.2,
+    waveScale: 0.75,
+    precip: null,
+    fog: 0.62,
+    lightning: false,
+    dim: 0.1,
+  },
+  {
+    id: 'snow',
+    name: 'Snow',
+    skyTint: [0.82, 0.87, 0.96],
+    sunAlpha: 0.55,
+    cloudAlpha: 1.3,
+    waveScale: 1.1,
+    precip: { kind: 'snow', count: 170, speed: 62, slant: 0.12 },
+    fog: 0.3,
+    lightning: false,
+    dim: 0.08,
+  },
+];
+
+export const WEATHER_BY_ID = Object.fromEntries(WEATHER.map((w) => [w.id, w]));
+
+/**
+ * The weather of each location.
+ *
+ * Every location has its own permanent weather, which is what makes them
+ * feel like different places:
+ *
+ *   Sunny Bay   — clear, the sun on your back.
+ *   Rocky Shore — a steady rain off the rocks.
+ *   Deep Ocean  — fog, so you cannot see what is coming.
+ *   Coral Reef  — snow, which is deeply wrong for a reef.
+ *   The Abyss   — a thunderstorm, because of course it is.
+ */
+export const LOCATION_WEATHER = {
+  sunny_bay: 'clear',
+  rocky_shore: 'rain',
+  deep_ocean: 'fog',
+  coral_reef: 'snow',
+  the_abyss: 'storm',
+};
 
 /**
  * Upgrade tracks. Level 0 = none owned.

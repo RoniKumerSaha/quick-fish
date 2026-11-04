@@ -9,7 +9,7 @@ import { FISH, FISH_BY_ID } from '../game/content.js';
 import {
   drawFisherman, drawRod, drawOilRig, RIG, drawCloud, drawBird, drawTree,
   drawRock, drawCoral, drawSeaweed, drawFish, drawBobber, drawSparkle,
-  drawShipwreck, drawBrokenPier, drawCoralArch, drawDeadTree,
+  drawShipwreck, drawBrokenPier, drawCoralArch, drawDeadTree, drawSunkenMast,
 } from './sprites.js';
 
 /**
@@ -230,16 +230,23 @@ export function drawScene(ctx, loc, t, opts = {}) {
   const scenery = getScenery(loc);
   const isNight = loc.ambience === 'abyss';
   const SHORE_Y = shoreY();
+  const weather = opts.weather || null;
 
   // The rig's size follows the boat upgrade, and the angler's footing
   // depends on it, so it has to be set before anything asks for the rod tip.
   setRigLevel(opts.boatLevel || 0);
 
   // ---- Sky
-  const [skyTop, skyBottom] = loc.sky;
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, SHORE_Y);
-  skyGrad.addColorStop(0, skyTop);
-  skyGrad.addColorStop(1, skyBottom);
+  //
+  // The weather tints the location's own sky, so each place keeps its
+  // colours while the light changes with the weather.
+  const skyGrad = weather
+    ? weather.tintSky(ctx, loc)
+    : ctx.createLinearGradient(0, 0, 0, SHORE_Y);
+  if (!weather) {
+    skyGrad.addColorStop(0, loc.sky[0]);
+    skyGrad.addColorStop(1, loc.sky[1]);
+  }
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, W, SHORE_Y);
 
@@ -254,14 +261,20 @@ export function drawScene(ctx, loc, t, opts = {}) {
       ctx.fillRect(sx, sy, 2, 2);
     }
   } else {
-    drawSun(ctx, loc, t);
+    drawSun(ctx, loc, t, weather);
   }
 
+  // ---- Storm clouds, over the top of the ordinary ones.
+  if (weather) weather.drawStormClouds(ctx, t);
+
   // ---- Clouds
+  ctx.save();
+  if (weather) ctx.globalAlpha = Math.min(1, weather.current.cloudAlpha * 0.6);
   for (const c of scenery.clouds) {
     const cx = (c.fx * W + t * c.speed) % (W + 90) - 45;
     drawCloud(ctx, cx, c.fy * H, c.w);
   }
+  ctx.restore();
 
   // ---- Birds
   for (const b of scenery.birds) {
@@ -270,6 +283,11 @@ export function drawScene(ctx, loc, t, opts = {}) {
   }
 
   // ---- Distant land (lighthouse / islands) per location
+  //
+  // The landmark is split in two: the part that stands above the water is
+  // drawn here, before the sea, and the part that sits *in* the sea is drawn
+  // after it. Anything below the waterline has to be painted afterwards or
+  // the water rectangle covers it and the landmark vanishes.
   drawLandmark(ctx, loc, t);
 
   // ---- The shore and its hut, behind the water
@@ -302,7 +320,12 @@ export function drawScene(ctx, loc, t, opts = {}) {
   }
 
   // ---- Wave bands (parallax by depth)
-  drawWaves(ctx, loc, t, 0);
+  drawWaves(ctx, loc, t, 0, weather);
+
+  // ---- The part of the landmark that sits in the sea (the wreck, the
+  // coral, the sunken mast). It has to come after the water, or the water
+  // rectangle paints over it and the landmark disappears.
+  drawLandmarkInWater(ctx, loc, t);
 
   // ---- Underwater scenery (behind the boat)
   drawUnderwater(ctx, loc, scenery, t);
@@ -314,7 +337,7 @@ export function drawScene(ctx, loc, t, opts = {}) {
   drawAngler(ctx, opts);
 
   // ---- Foreground wave band over the boat's waterline
-  drawWaves(ctx, loc, t, 1);
+  drawWaves(ctx, loc, t, 1, weather);
 
   // ---- Fishing line, drawn above the waves so it stays visible
   if (opts.lineFrom && opts.lineTo) {
@@ -333,6 +356,18 @@ export function drawScene(ctx, loc, t, opts = {}) {
     ctx.arc(bx, yy, b.size, 0, Math.PI * 2);
     ctx.fill();
   }
+
+  // ---- The weather, over the top of everything.
+  //
+  // Precipitation falls in front of the whole scene, the mist sits over it,
+  // and the dimming pass ties it together.
+  if (weather) {
+    weather.drawRipples(ctx, SHORE_Y);
+    weather.drawFog(ctx, SHORE_Y, t);
+    weather.drawPrecipitation(ctx);
+    weather.drawLightning(ctx);
+    weather.drawDim(ctx);
+  }
 }
 
 /**
@@ -341,9 +376,16 @@ export function drawScene(ctx, loc, t, opts = {}) {
  * It sits in the upper-left third so the upgrades panel on the right never
  * covers it, and the glitter on the water is aligned with it below.
  */
-function drawSun(ctx, loc, t) {
+function drawSun(ctx, loc, t, weather) {
   const sx = Math.round(W * 0.27);
   const sy = Math.round(H * 0.13) + Math.sin(t * 0.5) * 4;
+
+  // The sun dims with the weather — in a storm there is no sun at all.
+  const a = weather ? weather.current.sunAlpha : 1;
+  if (a <= 0.01) return;
+
+  ctx.save();
+  ctx.globalAlpha = a;
 
   const glow = ctx.createRadialGradient(sx, sy, 10, sx, sy, 150);
   glow.addColorStop(0, 'rgba(255,232,150,0.55)');
@@ -362,24 +404,29 @@ function drawSun(ctx, loc, t) {
   ctx.beginPath();
   ctx.arc(sx, sy, 22, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 }
 
 /**
  * Smooth wave bands drawn as filled sine ribbons.
+ *
+ * The weather sets how big the swell is: calm in the fog, violent in the
+ * Abyss storm.
  */
-function drawWaves(ctx, loc, t, layer) {
+function drawWaves(ctx, loc, t, layer, weather) {
   const isNight = loc.ambience === 'abyss';
   const crest = isNight ? 'rgba(150,190,240,0.34)' : 'rgba(240,252,255,0.52)';
   const trough = isNight ? 'rgba(38,64,120,0.32)' : 'rgba(10,58,110,0.28)';
   const SHORE_Y = shoreY();
+  const swell = weather ? weather.current.waveScale : 1;
 
   const bands = layer === 0 ? 6 : 4;
   for (let b = 0; b < bands; b++) {
     const depth = layer === 0 ? b / bands : 0.52 + b / (bands * 2.2);
     const y = SHORE_Y + 10 + depth * (H - SHORE_Y - 14);
-    const amp = (layer === 0 ? 3 : 6) * (0.6 + depth);
+    const amp = (layer === 0 ? 3 : 6) * (0.6 + depth) * swell;
     const period = layer === 0 ? 92 : 62;
-    const speed = layer === 0 ? 0.8 : 1.5;
+    const speed = (layer === 0 ? 0.8 : 1.5) * (0.7 + swell * 0.4);
     const thick = 2 + depth * 3;
 
     ctx.strokeStyle = crest;
@@ -533,6 +580,11 @@ function drawUnderwater(ctx, loc, scenery, t) {
   ctx.restore();
 }
 
+/**
+ * The part of the location's landmark that stands above the water.
+ *
+ * Drawn before the sea, so it sits behind it.
+ */
 function drawLandmark(ctx, loc, t) {
   const SHORE_Y = shoreY();
   switch (loc.ambience) {
@@ -613,18 +665,6 @@ function drawLandmark(ctx, loc, t) {
       ctx.strokeStyle = 'rgba(255,255,255,0.22)';
       ctx.lineWidth = 3;
       ctx.stroke();
-
-      // The landmark: a broken shipwreck half-sunk in the water.
-      drawShipwreck(ctx, W * 0.70, SHORE_Y + 12, 0.92, t);
-
-      // A scatter of debris drifting around it.
-      ctx.fillStyle = 'rgba(80,64,48,0.85)';
-      const drift = (t * 6) % 90;
-      for (let i = 0; i < 5; i++) {
-        const dx = W * 0.58 + i * 34 + drift * 0.3;
-        const dy = SHORE_Y + 22 + Math.sin(i * 2.1 + t) * 3;
-        ctx.fillRect(Math.round(dx % (W - 40)), Math.round(dy), 9, 3);
-      }
       break;
     }
     case 'deep': {
@@ -654,9 +694,6 @@ function drawLandmark(ctx, loc, t) {
         ctx.fillRect(cx, SHORE_Y - ch, 10, ch);
         ctx.fillRect(cx + 4, SHORE_Y - ch - 12, 6, 12);
       }
-
-      // The landmark: a coral arch, the one thing breaking the horizon.
-      drawCoralArch(ctx, W * 0.70, SHORE_Y + 6, 1.05);
       break;
     }
     case 'abyss': {
@@ -677,9 +714,53 @@ function drawLandmark(ctx, loc, t) {
         ctx.arc(W * 0.73, H * 0.141 + bob, 5, 0, Math.PI * 2);
         ctx.fill();
       }
+      break;
+    }
+  }
+}
 
+/**
+ * The part of the location's landmark that sits *in* the water.
+ *
+ * Drawn after the sea, so the wreck, the coral and the tree are actually
+ * visible instead of being painted over by the water rectangle.
+ */
+function drawLandmarkInWater(ctx, loc, t) {
+  const SHORE_Y = shoreY();
+  switch (loc.ambience) {
+    case 'rocks': {
+      // The landmark: a broken shipwreck half-sunk in the water.
+      //
+      // It sits out to the right so it does not crowd the rig, and it is
+      // big enough to read as a whole ship rather than a smudge.
+      drawShipwreck(ctx, W * 0.74, SHORE_Y + 26, 1.55, t);
+
+      // A scatter of debris drifting around it.
+      ctx.fillStyle = 'rgba(80,64,48,0.85)';
+      const drift = (t * 6) % 90;
+      for (let i = 0; i < 5; i++) {
+        const dx = W * 0.58 + i * 34 + drift * 0.3;
+        const dy = SHORE_Y + 34 + Math.sin(i * 2.1 + t) * 3;
+        ctx.fillRect(Math.round(dx % (W - 40)), Math.round(dy), 9, 3);
+      }
+      break;
+    }
+    case 'deep': {
+      // The landmark: a sunken mast, the only thing breaking the horizon.
+      drawSunkenMast(ctx, W * 0.70, SHORE_Y + 16, 1.25, t);
+      break;
+    }
+    case 'reef': {
+      // The landmark: a coral arch, the one thing breaking the horizon.
+      drawCoralArch(ctx, W * 0.72, SHORE_Y + 18, 1.5);
+      break;
+    }
+    case 'abyss': {
       // The landmark: a dead tree, standing in the black water.
-      drawDeadTree(ctx, W * 0.16, SHORE_Y + 26, 1.15, t);
+      //
+      // It stands on the right, away from the rig, or the angler and the
+      // platform hide it completely.
+      drawDeadTree(ctx, W * 0.78, SHORE_Y + 40, 1.5, t);
       break;
     }
   }
