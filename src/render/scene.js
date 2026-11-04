@@ -9,6 +9,7 @@ import { FISH, FISH_BY_ID } from '../game/content.js';
 import {
   drawFisherman, drawRod, drawOilRig, RIG, drawCloud, drawBird, drawTree,
   drawRock, drawCoral, drawSeaweed, drawFish, drawBobber, drawSparkle,
+  drawShipwreck, drawBrokenPier, drawCoralArch, drawDeadTree,
 } from './sprites.js';
 
 /**
@@ -598,6 +599,7 @@ function drawLandmark(ctx, loc, t) {
       break;
     }
     case 'rocks': {
+      // A cliff wall along the far side.
       ctx.fillStyle = '#464e5c';
       ctx.beginPath();
       ctx.moveTo(0, SHORE_Y);
@@ -611,6 +613,18 @@ function drawLandmark(ctx, loc, t) {
       ctx.strokeStyle = 'rgba(255,255,255,0.22)';
       ctx.lineWidth = 3;
       ctx.stroke();
+
+      // The landmark: a broken shipwreck half-sunk in the water.
+      drawShipwreck(ctx, W * 0.70, SHORE_Y + 12, 0.92, t);
+
+      // A scatter of debris drifting around it.
+      ctx.fillStyle = 'rgba(80,64,48,0.85)';
+      const drift = (t * 6) % 90;
+      for (let i = 0; i < 5; i++) {
+        const dx = W * 0.58 + i * 34 + drift * 0.3;
+        const dy = SHORE_Y + 22 + Math.sin(i * 2.1 + t) * 3;
+        ctx.fillRect(Math.round(dx % (W - 40)), Math.round(dy), 9, 3);
+      }
       break;
     }
     case 'deep': {
@@ -640,6 +654,9 @@ function drawLandmark(ctx, loc, t) {
         ctx.fillRect(cx, SHORE_Y - ch, 10, ch);
         ctx.fillRect(cx + 4, SHORE_Y - ch - 12, 6, 12);
       }
+
+      // The landmark: a coral arch, the one thing breaking the horizon.
+      drawCoralArch(ctx, W * 0.70, SHORE_Y + 6, 1.05);
       break;
     }
     case 'abyss': {
@@ -660,6 +677,9 @@ function drawLandmark(ctx, loc, t) {
         ctx.arc(W * 0.73, H * 0.141 + bob, 5, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      // The landmark: a dead tree, standing in the black water.
+      drawDeadTree(ctx, W * 0.16, SHORE_Y + 26, 1.15, t);
       break;
     }
   }
@@ -740,6 +760,12 @@ function drawPier(ctx, loc, t) {
     // Foam where the rock meets the water.
     ctx.fillStyle = 'rgba(255,255,255,0.42)';
     ctx.fillRect(r.x - 3, baseY - 2, r.w + 6, 3);
+  }
+
+  // Rocky Shore gets a broken pier instead of bare rocks — the remains of
+  // whatever used to work this water.
+  if (loc.ambience === 'rocks') {
+    drawBrokenPier(ctx, Math.round(150 * (W / 960)), deckY + 34, 0.95, t);
   }
 }
 

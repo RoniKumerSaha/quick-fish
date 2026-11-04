@@ -16,7 +16,10 @@ import {
 import { FISH_BY_ID, TIERS, UPGRADES, LOCATIONS } from '../game/content.js';
 import { locationRequirements } from '../game/state.js';
 import { W, H } from '../engine/view.js';
-import { drawFish, drawFishFitted, drawFishScaled, drawFishPortrait, drawSparkle, drawCircle } from './sprites.js';
+import {
+  drawFish, drawFishFitted, drawFishScaled, drawFishPortrait, drawSparkle,
+  drawCircle, drawShipwreck, drawCoralArch, drawDeadTree,
+} from './sprites.js';
 
 export { W, H };
 
@@ -1134,23 +1137,14 @@ export function drawLocationSelect(ctx, state, input, t, rect_, scroll) {
         current ? '#f7e2ae' : hovering ? '#f5e7c4' : '#e9d6b0');
       roundRectStroke(ctx, row.x, ry, row.w, row.h, 10, current ? THEME.goldDark : '#b09463', 2);
 
-      // Mini preview of the sky and water colours.
+      // Mini preview: the sky, the water, and a silhouette of whatever
+      // makes this place recognisable — a lighthouse, a shipwreck, a coral
+      // arch. The gradients alone made every location look the same.
       const pvX = row.x + 8, pvY = ry + 8, pvW = 72, pvH = 56;
       ctx.save();
       roundRectPath(ctx, pvX, pvY, pvW, pvH, 6);
       ctx.clip();
-      const skyG = ctx.createLinearGradient(0, pvY, 0, pvY + pvH * 0.5);
-      skyG.addColorStop(0, loc.sky[0]);
-      skyG.addColorStop(1, loc.sky[1]);
-      ctx.fillStyle = skyG;
-      ctx.fillRect(pvX, pvY, pvW, pvH * 0.5);
-      const watG = ctx.createLinearGradient(0, pvY + pvH * 0.5, 0, pvY + pvH);
-      watG.addColorStop(0, loc.water[0]);
-      watG.addColorStop(1, loc.water[1]);
-      ctx.fillStyle = watG;
-      ctx.fillRect(pvX, pvY + pvH * 0.5, pvW, pvH * 0.5);
-      ctx.fillStyle = loc.sand;
-      ctx.fillRect(pvX, pvY + pvH - 6, pvW, 6);
+      drawLocationThumb(ctx, loc, pvX, pvY, pvW, pvH, t);
       ctx.restore();
       roundRectStroke(ctx, pvX, pvY, pvW, pvH, 6, '#7a6040', 1.5);
 
@@ -1199,6 +1193,137 @@ export function drawLocationSelect(ctx, state, input, t, rect_, scroll) {
     roundRect(ctx, p.x + p.w - 12, listY + 4, 6, trackH, 3, '#cdb894');
     roundRect(ctx, p.x + p.w - 12, thumbY, 6, thumbH, 3, '#8b5a2b');
   }
+}
+
+/**
+ * A tiny scene of a location, used as the thumbnail in the travel panel.
+ *
+ * Each one gets the sky and water of the real place plus a silhouette of
+ * its landmark, so the five rows are told apart at a glance instead of
+ * being five near-identical blue rectangles.
+ */
+function drawLocationThumb(ctx, loc, x, y, w, h, t) {
+  const horizon = y + h * 0.5;
+
+  const skyG = ctx.createLinearGradient(0, y, 0, horizon);
+  skyG.addColorStop(0, loc.sky[0]);
+  skyG.addColorStop(1, loc.sky[1]);
+  ctx.fillStyle = skyG;
+  ctx.fillRect(x, y, w, horizon - y);
+
+  const watG = ctx.createLinearGradient(0, horizon, 0, y + h);
+  watG.addColorStop(0, loc.water[0]);
+  watG.addColorStop(1, loc.water[1]);
+  ctx.fillStyle = watG;
+  ctx.fillRect(x, horizon, w, y + h - horizon);
+
+  // Sun or moon.
+  if (loc.ambience === 'abyss') {
+    ctx.fillStyle = 'rgba(200,215,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.78, y + h * 0.18, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // A few stars.
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    for (let i = 0; i < 5; i++) {
+      ctx.fillRect(x + 8 + i * 13, y + 6 + (i % 3) * 7, 1.5, 1.5);
+    }
+  } else {
+    ctx.fillStyle = 'rgba(255,236,160,0.9)';
+    ctx.beginPath();
+    ctx.arc(x + w * 0.22, y + h * 0.2, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // The landmark silhouette.
+  switch (loc.ambience) {
+    case 'shore': {
+      // A lighthouse on a headland.
+      ctx.fillStyle = '#3f6b45';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.52, horizon);
+      ctx.quadraticCurveTo(x + w * 0.68, y + h * 0.16, x + w, horizon);
+      ctx.closePath();
+      ctx.fill();
+
+      const lx = x + w * 0.66;
+      const lh = h * 0.42;
+      ctx.fillStyle = '#f0f0f4';
+      ctx.fillRect(lx, horizon - lh, 7, lh);
+      ctx.fillStyle = '#d8452b';
+      ctx.fillRect(lx, horizon - lh * 0.72, 7, lh * 0.16);
+      ctx.fillStyle = '#2f4a6d';
+      ctx.fillRect(lx - 1, horizon - lh - 5, 9, 5);
+      ctx.fillStyle = '#ffd45e';
+      ctx.fillRect(lx + 1, horizon - lh - 4, 5, 4);
+      break;
+    }
+    case 'rocks': {
+      // A broken shipwreck in the shallows.
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(x, horizon - 1, w, 2);
+
+      ctx.save();
+      ctx.translate(x + w * 0.58, horizon + 4);
+      ctx.rotate(-0.16);
+      ctx.scale(0.19, 0.19);
+      drawShipwreck(ctx, 0, 0, 1, t);
+      ctx.restore();
+      break;
+    }
+    case 'deep': {
+      // A sunken mast breaking the surface.
+      ctx.fillStyle = 'rgba(255,255,255,0.28)';
+      ctx.fillRect(x, horizon - 1, w, 2);
+      ctx.strokeStyle = '#2a3d5c';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.66, horizon + 6);
+      ctx.lineTo(x + w * 0.60, horizon - h * 0.30);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.63, horizon - h * 0.16);
+      ctx.lineTo(x + w * 0.80, horizon - h * 0.22);
+      ctx.stroke();
+      break;
+    }
+    case 'reef': {
+      // A coral arch.
+      ctx.save();
+      ctx.translate(x + w * 0.52, horizon + 4);
+      ctx.scale(0.26, 0.26);
+      drawCoralArch(ctx, 0, 0, 1);
+      ctx.restore();
+      break;
+    }
+    case 'abyss': {
+      // A looming shape with two glowing eyes.
+      ctx.fillStyle = '#141f42';
+      ctx.beginPath();
+      ctx.ellipse(x + w * 0.62, y + h * 0.28, 30, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (Math.sin(t * 1.2) > 0.3) {
+        ctx.fillStyle = '#ff6b6b';
+        ctx.beginPath();
+        ctx.arc(x + w * 0.56, y + h * 0.26, 2, 0, Math.PI * 2);
+        ctx.arc(x + w * 0.64, y + h * 0.25, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // A dead tree on the left.
+      ctx.save();
+      ctx.translate(x + w * 0.2, horizon + 6);
+      ctx.scale(0.2, 0.2);
+      drawDeadTree(ctx, 0, 0, 1, t);
+      ctx.restore();
+      break;
+    }
+  }
+
+  // The seabed along the bottom.
+  ctx.fillStyle = loc.sand;
+  ctx.fillRect(x, y + h - 4, w, 4);
 }
 
 /**

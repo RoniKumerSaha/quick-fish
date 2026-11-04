@@ -7,8 +7,43 @@ import { Display, toggleFullscreen, isFullscreen } from './engine/display.js';
 import { Input } from './engine/input.js';
 import { Loop } from './engine/loop.js';
 import { audio } from './engine/audio.js';
-import { Game } from './game/screens.js';
+import { Game, SCREEN } from './game/screens.js';
 import { saveStateNow } from './game/state.js';
+
+/**
+ * True when the page is being served from a local development server.
+ *
+ * Used to switch on the developer conveniences — everything unlocked, all
+ * gear maxed — without them ever being present in a deployed build. The
+ * check is on the *hostname*, so it cannot fire in production however the
+ * site is reached.
+ */
+function isLocalDev() {
+  const host = window.location.hostname;
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+}
+
+/**
+ * Apply the developer save, if the dev helpers are present.
+ *
+ * The helpers live in `dev/`, which is excluded from git, so a deployed
+ * site does not have them. The import is dynamic and guarded, which means
+ * a production build simply skips it — there is nothing to disable and
+ * nothing to leak.
+ */
+async function applyDevSave(game) {
+  if (!isLocalDev()) return;
+  try {
+    const mod = await import('../dev/autounlock.js');
+    mod.unlockEverything(game.state);
+    // The intro screen is chosen when the Game is built, before the state
+    // was unlocked, so put the player straight into the water.
+    game.screen = SCREEN.FISHING;
+    console.info('[dev] Everything unlocked.');
+  } catch {
+    // The dev folder is not present — nothing to do.
+  }
+}
 
 export async function boot(canvas) {
   const ctx = canvas.getContext('2d', { alpha: false });
@@ -17,6 +52,10 @@ export async function boot(canvas) {
   const display = new Display(canvas);
   const input = new Input(canvas);
   const game = new Game(ctx, input);
+
+  // Developer conveniences: everything unlocked, all gear maxed.
+  // Only ever runs on localhost, and only if `dev/` is present.
+  await applyDevSave(game);
 
   // The AudioContext can only start after a user gesture.
   const kickAudio = () => {

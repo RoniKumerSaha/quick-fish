@@ -1979,6 +1979,271 @@ export function drawSeaweed(ctx, x, y, h = 16, color = '#2f7a4a') {
 }
 
 /**
+ * A half-sunk wooden shipwreck, listing hard to port.
+ *
+ * The hull is broken open amidships — a jagged gap with splintered ribs
+ * showing through — and the mast is a snapped stump. It is the landmark
+ * for Rocky Shore, and the thing that makes that water read as a wreck
+ * rather than as a blue rectangle.
+ *
+ * @param {number} x  centre of the wreck
+ * @param {number} y  the waterline it sits in
+ * @param {number} s  scale
+ * @param {number} t  time, for the gentle rock of the wreck
+ */
+export function drawShipwreck(ctx, x, y, s = 1, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  // It rolls slowly in the swell.
+  ctx.rotate(Math.sin(t * 0.5) * 0.035 - 0.16);
+  ctx.scale(s, s);
+
+  const wood = '#5a4433';
+  const woodDark = '#3b2c21';
+  const woodLit = '#7a5f45';
+
+  // --- Hull. A curved belly, cut open on the right.
+  ctx.beginPath();
+  ctx.moveTo(-62, 0);
+  // Keel and belly, curving up to the stern.
+  ctx.quadraticCurveTo(-40, 30, -6, 34);
+  ctx.quadraticCurveTo(18, 36, 30, 12);
+  // The broken end — a ragged edge rather than a clean cut.
+  ctx.lineTo(38, 16);
+  ctx.lineTo(30, 2);
+  ctx.lineTo(40, -6);
+  ctx.lineTo(31, -14);
+  // Deck line back to the stern.
+  ctx.lineTo(-58, -14);
+  ctx.quadraticCurveTo(-64, -8, -62, 0);
+  ctx.closePath();
+
+  const g = ctx.createLinearGradient(0, -14, 0, 34);
+  g.addColorStop(0, woodLit);
+  g.addColorStop(0.45, wood);
+  g.addColorStop(1, woodDark);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = '#241a13';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // --- Planking on the hull.
+  ctx.strokeStyle = 'rgba(30,22,16,0.5)';
+  ctx.lineWidth = 1.4;
+  for (let i = 1; i <= 3; i++) {
+    const yy = -14 + i * 11;
+    ctx.beginPath();
+    ctx.moveTo(-58, yy);
+    ctx.quadraticCurveTo(-10, yy + 5, 30, yy - 4);
+    ctx.stroke();
+  }
+
+  // --- Broken ribs showing through the gap in the side.
+  ctx.strokeStyle = woodLit;
+  ctx.lineWidth = 2.6;
+  for (let i = 0; i < 4; i++) {
+    const rx = -14 + i * 9;
+    ctx.beginPath();
+    ctx.moveTo(rx, -10);
+    ctx.lineTo(rx + 2, 16);
+    ctx.stroke();
+  }
+
+  // --- Snapped mast, leaning.
+  ctx.strokeStyle = wood;
+  ctx.lineWidth = 6;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-24, -12);
+  ctx.lineTo(-32, -54);
+  ctx.stroke();
+  // Splintered top.
+  ctx.strokeStyle = woodLit;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-32, -54);
+  ctx.lineTo(-29, -60);
+  ctx.moveTo(-32, -54);
+  ctx.lineTo(-35, -59);
+  ctx.stroke();
+
+  // --- A yardarm stub with a rag of sail.
+  ctx.strokeStyle = woodDark;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-34, -46);
+  ctx.lineTo(-6, -42);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(206,196,172,0.75)';
+  ctx.beginPath();
+  ctx.moveTo(-32, -45);
+  ctx.quadraticCurveTo(-20, -32, -8, -41);
+  ctx.lineTo(-30, -38);
+  ctx.closePath();
+  ctx.fill();
+
+  // --- Rope trailing from the wreck into the water.
+  ctx.strokeStyle = 'rgba(190,170,130,0.8)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(-56, -8);
+  ctx.quadraticCurveTo(-78, 4, -96, 18);
+  ctx.stroke();
+
+  // --- Water lapping at the hull.
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.beginPath();
+  ctx.ellipse(-18, 22, 52, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * A derelict pier of rotting planks, half under the water.
+ *
+ * The Rocky Shore foreground — a broken dock, which pairs with the
+ * shipwreck on the horizon.
+ */
+export function drawBrokenPier(ctx, x, y, s = 1, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+
+  const wood = '#4e3b2a';
+  const woodDark = '#33261b';
+
+  // Posts, leaning at different angles.
+  const posts = [
+    { px: 0, len: 44, tilt: -0.06 },
+    { px: 30, len: 34, tilt: 0.09 },
+    { px: 58, len: 26, tilt: -0.12 },
+  ];
+  for (const p of posts) {
+    ctx.save();
+    ctx.translate(p.px, 0);
+    ctx.rotate(p.tilt);
+    ctx.fillStyle = woodDark;
+    ctx.fillRect(-4, -p.len, 8, p.len + 10);
+    ctx.fillStyle = wood;
+    ctx.fillRect(-4, -p.len, 4, p.len + 10);
+    ctx.restore();
+  }
+
+  // The deck: three planks that survive, with gaps between them.
+  const planks = [
+    { py: -44, pw: 34, tilt: -0.03 },
+    { py: -34, pw: 26, tilt: 0.05 },
+  ];
+  for (const p of planks) {
+    ctx.save();
+    ctx.translate(0, p.py);
+    ctx.rotate(p.tilt);
+    ctx.fillStyle = wood;
+    ctx.fillRect(-2, 0, p.pw, 7);
+    ctx.fillStyle = 'rgba(20,14,10,0.4)';
+    ctx.fillRect(-2, 5, p.pw, 2);
+    ctx.restore();
+  }
+
+  // A rope loop hanging off the end.
+  ctx.strokeStyle = 'rgba(190,170,130,0.85)';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(30, -34);
+  ctx.quadraticCurveTo(38, -18, 30, -6);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * A coral arch, the landmark of the Coral Reef.
+ */
+export function drawCoralArch(ctx, x, y, s = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+
+  const c1 = '#e07a9a';
+  const c2 = '#f0a63c';
+
+  ctx.strokeStyle = c1;
+  ctx.lineWidth = 14;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-34, 0);
+  ctx.quadraticCurveTo(-30, -52, 0, -56);
+  ctx.quadraticCurveTo(30, -52, 34, 0);
+  ctx.stroke();
+
+  // Branching tips.
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = c2;
+  ctx.beginPath();
+  ctx.moveTo(-30, -14);
+  ctx.lineTo(-46, -30);
+  ctx.moveTo(-28, -26);
+  ctx.lineTo(-42, -44);
+  ctx.moveTo(30, -14);
+  ctx.lineTo(46, -30);
+  ctx.moveTo(28, -26);
+  ctx.lineTo(42, -44);
+  ctx.stroke();
+
+  // Texture dots.
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a) * 30, -28 - Math.sin(a) * 26, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
+ * A dead, half-sunken tree — the landmark of the Abyss.
+ */
+export function drawDeadTree(ctx, x, y, s = 1, t = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+
+  const trunk = '#1b2440';
+  const lit = '#2d3a5c';
+
+  ctx.strokeStyle = trunk;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 9;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(-4, -34, 6, -66);
+  ctx.stroke();
+
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(4, -40);
+  ctx.lineTo(-26, -58);
+  ctx.moveTo(5, -52);
+  ctx.lineTo(30, -70);
+  ctx.moveTo(5, -62);
+  ctx.lineTo(-14, -80);
+  ctx.stroke();
+
+  // A couple of pale, bioluminescent specks clinging to it.
+  ctx.fillStyle = 'rgba(120,220,255,0.55)';
+  for (let i = 0; i < 5; i++) {
+    const p = 0.5 + Math.sin(t * 0.8 + i) * 0.2;
+    ctx.beginPath();
+    ctx.arc(-24 + i * 12, -56 - Math.sin(i * 2) * 14, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/**
  * A fishing bobber floating on the water.
  */
 export function drawBobber(ctx, x, y, t = 0, submerged = false) {
