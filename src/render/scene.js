@@ -364,8 +364,10 @@ export function drawScene(ctx, loc, t, opts = {}) {
   if (weather) {
     weather.drawRipples(ctx, SHORE_Y);
     weather.drawFog(ctx, SHORE_Y, t);
+    weather.drawSheets(ctx, t);
     weather.drawPrecipitation(ctx);
     weather.drawLightning(ctx);
+    weather.drawHaze(ctx);
     weather.drawDim(ctx);
   }
 }

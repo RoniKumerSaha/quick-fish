@@ -667,10 +667,15 @@ export const WEATHER = [
     sunAlpha: 0,
     cloudAlpha: 2.2,
     waveScale: 2.3,
-    precip: { kind: 'rain', count: 320, speed: 900, slant: 0.55 },
+    // The Abyss storm drives rain across the whole screen, sea included.
+    precip: { kind: 'rain', count: 700, speed: 900, slant: 0.55, fullScreen: true },
     fog: 0.16,
     lightning: true,
     dim: 0.3,
+    // Sheets of driving rain sweeping over everything.
+    sheets: 4,
+    // A cold haze over the whole picture.
+    haze: { color: '54,74,120', alpha: 0.2 },
   },
   {
     id: 'fog',

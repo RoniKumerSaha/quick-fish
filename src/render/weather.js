@@ -90,19 +90,25 @@ export class Weather {
       this.particles.length = want;
     }
 
-    // The waterline. Raindrops that fall past it land on the water.
+    // The waterline. A raindrop that falls past it lands on the water and
+    // makes a ripple. In a full-screen storm it keeps going, so the rain
+    // covers the sea as well as the sky.
     const waterY = H * 0.474;
 
     const drift = p.kind === 'snow' ? Math.sin(this.timer * 1.3) * 14 : 0;
     for (const q of this.particles) {
+      const wasAbove = q.y <= waterY;
       q.y += p.speed * dt;
       q.x += p.slant * p.speed * dt + drift * dt;
-      if (q.y > waterY && p.kind === 'rain') {
-        // The drop hits the water: make a ripple and start it again.
+      if (wasAbove && q.y > waterY && p.kind === 'rain') {
+        // The drop hits the water: make a ripple.
         if (this.rainRipples.length < 50) {
           this.rainRipples.push({ x: q.x, y: waterY, t: 0 });
         }
-        this.spawnInto(q, p);
+        if (!p.fullScreen) {
+          // Ordinary rain stops at the surface.
+          this.spawnInto(q, p);
+        }
       } else if (q.y > H + 20) {
         this.spawnInto(q, p);
       } else if (q.x > W + 30) {
@@ -268,14 +274,31 @@ export class Weather {
 
     ctx.save();
     if (p.kind === 'rain') {
-      ctx.strokeStyle = 'rgba(190,214,240,0.55)';
-      ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      for (const q of this.particles) {
-        ctx.moveTo(q.x, q.y);
-        ctx.lineTo(q.x - p.slant * q.len, q.y + q.len);
+      // Three passes, so the rain has depth.
+      //
+      // Above the water the drops are bright against the sky, in two
+      // tones so they do not all read the same. Below the water they are
+      // dimmed and blue, so they read as rain seen through the sea
+      // rather than as rain painted on top of it.
+      const waterY = H * 0.474;
+      const half = Math.floor(this.particles.length / 2);
+      const passes = [
+        { from: 0, to: half, color: 'rgba(150,178,215,0.34)', width: 1, below: false },
+        { from: half, to: this.particles.length, color: 'rgba(214,234,255,0.62)', width: 1.4, below: false },
+        { from: 0, to: this.particles.length, color: 'rgba(126,168,214,0.26)', width: 1, below: true },
+      ];
+      for (const pass of passes) {
+        ctx.strokeStyle = pass.color;
+        ctx.lineWidth = pass.width;
+        ctx.beginPath();
+        for (let i = pass.from; i < pass.to; i++) {
+          const q = this.particles[i];
+          if (pass.below !== q.y > waterY) continue;
+          ctx.moveTo(q.x, q.y);
+          ctx.lineTo(q.x - p.slant * q.len, q.y + q.len);
+        }
+        ctx.stroke();
       }
-      ctx.stroke();
     } else {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       for (const q of this.particles) {
@@ -284,6 +307,57 @@ export class Weather {
         ctx.fill();
       }
     }
+    ctx.restore();
+  }
+
+  /**
+   * Sheets of driving rain sweeping across the whole screen.
+   *
+   * Each sheet is a wide, soft, slanted band that slides past, so the
+   * storm has depth and gusts. It is what makes the rain read as weather
+   * rather than as a sprite sheet of streaks.
+   */
+  drawSheets(ctx, t) {
+    const n = this.current.sheets;
+    if (!n) return;
+
+    ctx.save();
+    for (let i = 0; i < n; i++) {
+      const speed = 340 + i * 190;
+      const span = W + 900;
+      const x = ((t * speed + i * 620) % span) - 450;
+      const w = 150 + i * 90;
+      const slant = 0.42;
+
+      const g = ctx.createLinearGradient(x, 0, x + w, 0);
+      g.addColorStop(0, 'rgba(180,205,240,0)');
+      g.addColorStop(0.5, `rgba(198,220,250,${0.14 - i * 0.03})`);
+      g.addColorStop(1, 'rgba(180,205,240,0)');
+      ctx.fillStyle = g;
+
+      ctx.beginPath();
+      ctx.moveTo(x, -40);
+      ctx.lineTo(x + w, -40);
+      ctx.lineTo(x + w - slant * H, H + 40);
+      ctx.lineTo(x - slant * H, H + 40);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /**
+   * A cold haze over the whole picture.
+   *
+   * The storm's own colour, laid over the scene, so the sky, the sea and
+   * the rig all sit in the same light.
+   */
+  drawHaze(ctx) {
+    const h = this.current.haze;
+    if (!h || h.alpha <= 0) return;
+    ctx.save();
+    ctx.fillStyle = `rgba(${h.color},${h.alpha})`;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
   }
 
