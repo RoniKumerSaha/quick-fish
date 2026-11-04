@@ -1,0 +1,18 @@
+{
+  "name": "pixel-fishing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pixel Fishing - One More Cast! A tiny pixel-art fishing game.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "game",
+    "pixel-art",
+    "canvas",
+    "fishing"
+  ],
+  "license": "MIT"
+}
