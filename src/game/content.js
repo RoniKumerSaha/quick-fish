@@ -116,7 +116,7 @@ export const FISH = [
     locations: ['sunny_bay', 'rocky_shore'],
   },
   {
-    id: 'seahorse', name: 'Little Seahorse', archetype: 'eel', tier: 'common',
+    id: 'little_seahorse', name: 'Little Seahorse', archetype: 'eel', tier: 'common',
     weight: 1.2, price: 90, weightIn: 9, minBait: 1, minRod: 1, minLine: 1,
     palette: { body: '#d9a441', belly: '#f6dd9e', fin: '#a87526', eye: '#101020' },
     locations: ['sunny_bay', 'rocky_shore'],
