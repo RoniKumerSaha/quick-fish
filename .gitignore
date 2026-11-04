@@ -1,8 +1,10 @@
 node_modules/
+public/
 test-results/
 playwright-report/
 screenshots/
 .puku/
+.vercel/
 .DS_Store
 Thumbs.db
 *.log

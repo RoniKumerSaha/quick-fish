@@ -15,9 +15,33 @@ generative pentatonic loop.
 npm start       # serves on http://localhost:5173
 ```
 
-There is no build step. `server.js` is a zero-dependency static file server;
-any static server works just as well. The game itself has **no runtime
-dependencies** — open `index.html` from a server and it runs.
+`tools/serve.js` is a zero-dependency static file server; any static server
+works just as well. The game itself has **no runtime dependencies** — open
+`index.html` from a server and it runs.
+
+## Deploying
+
+The game is a static site, so it deploys anywhere that can serve files.
+
+```bash
+npm run build     # stages the site into public/
+npm run preview   # serves public/ on http://localhost:5173
+```
+
+`build.js` does not transpile anything — the game is already plain ES
+modules the browser runs as-is. It only copies `index.html` and `src/` into
+`public/`, the directory the host publishes.
+
+**Vercel** works out of the box: `vercel.json` sets the build command to
+`npm run build` and the output directory to `public`. Without that file
+Vercel guesses the project is a Node server, runs `npm start` as the build
+step, and the build hangs on the dev server instead of producing output.
+
+**GitHub Pages / Netlify / Cloudflare Pages**: set the build command to
+`npm run build` and the publish directory to `public`.
+
+The `.js` files are served with the correct `text/javascript` content type,
+which is required for the browser to accept them as ES modules.
 
 ## Controls
 
@@ -85,7 +109,10 @@ values are pruned rather than crashing the game. Use `wipeSave()` in
 
 ```
 index.html            canvas host + boot overlay
-server.js             zero-dependency static server
+build.js              stages the site into public/ for static hosting
+vercel.json           Vercel build + output config
+tools/
+  serve.js            zero-dependency static file server (dev only)
 src/
   main.js             boot: canvas, input, audio, loop
   engine/

@@ -5,8 +5,10 @@
   "description": "Pixel Fishing - One More Cast! A tiny pixel-art fishing game.",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+    "start": "node tools/serve.js",
+    "dev": "node tools/serve.js",
+    "build": "node build.js",
+    "preview": "node tools/serve.js public"
   },
   "keywords": [
     "game",

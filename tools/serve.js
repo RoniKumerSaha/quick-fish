@@ -1,14 +1,22 @@
 /**
  * Zero-dependency static file server for Pixel Fishing.
- * Run with: node server.js  (or npm start)
+ * Run with: node tools/serve.js  (or npm start)
  * Then open http://localhost:5173
+ *
+ * This is a *development* server. Production hosting (Vercel, GitHub
+ * Pages, Netlify) publishes the static `public/` directory instead — see
+ * build.js and vercel.json.
+ *
+ * An optional first argument sets the directory to serve, so the built
+ * output can be previewed with: node tools/serve.js public
  */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)));
+const PROJECT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const ROOT = resolve(PROJECT_ROOT, process.argv[2] || '.');
 const PORT = Number(process.env.PORT) || 5173;
 
 const MIME = {
@@ -55,12 +63,13 @@ const server = createServer(async (req, res) => {
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`\n  Port ${PORT} is already in use.`);
-    console.error(`  Try: PORT=5174 node server.js\n`);
+    console.error(`  Try: PORT=5174 node tools/serve.js\n`);
     process.exit(1);
   }
   throw err;
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  Pixel Fishing running at http://localhost:${PORT}\n`);
+  console.log(`\n  Pixel Fishing running at http://localhost:${PORT}`);
+  console.log(`  Serving ${ROOT}\n`);
 });
