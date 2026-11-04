@@ -57,7 +57,13 @@ export const TIERS = {
  * minBait  - minimum bait level required for this species to be rolled
  * minRod   - minimum rod level required
  * minLine  - minimum line level required
+ * minLevel - minimum player level required (default 0)
  * requires - location ids this fish appears in (empty = everywhere)
+ *
+ * Big predators come in pairs: a small "baby" form that a beginner can
+ * land, and the full-grown animal that needs both a high level and the
+ * right gear. The baby is a genuinely different species, so it has its
+ * own entry in the collection book.
  */
 export const FISH = [
   // ------------------------------------------------------------- Sunny Bay
@@ -190,14 +196,26 @@ export const FISH = [
     locations: ['rocky_shore', 'deep_ocean', 'coral_reef'],
   },
   {
+    id: 'baby_stingray', name: 'Baby Stingray', archetype: 'ray', tier: 'common',
+    weight: 2.6, price: 60, weightIn: 14, minBait: 1, minRod: 1, minLine: 1, minLevel: 0,
+    palette: { body: '#b09a78', belly: '#efe2c8', fin: '#8a7659', eye: '#101020', spot: '#7a6650' },
+    locations: ['sunny_bay', 'rocky_shore'],
+  },
+  {
     id: 'stingray', name: 'Southern Stingray', archetype: 'ray', tier: 'rare',
-    weight: 9, price: 330, weightIn: 7, minBait: 2, minRod: 3, minLine: 3,
+    weight: 9, price: 330, weightIn: 7, minBait: 2, minRod: 3, minLine: 3, minLevel: 4,
     palette: { body: '#8a7458', belly: '#e0d2b8', fin: '#6b5942', eye: '#101020', spot: '#5e4b36' },
     locations: ['rocky_shore', 'deep_ocean'],
   },
   {
+    id: 'baby_turtle', name: 'Hatchling Turtle', archetype: 'turtle', tier: 'common',
+    weight: 2.2, price: 55, weightIn: 12, minBait: 1, minRod: 1, minLine: 1, minLevel: 0,
+    palette: { body: '#6fa06a', belly: '#e4ecbe', fin: '#4f7d4e', eye: '#101020' },
+    locations: ['sunny_bay', 'rocky_shore', 'coral_reef'],
+  },
+  {
     id: 'sea_turtle', name: 'Green Sea Turtle', archetype: 'turtle', tier: 'rare',
-    weight: 14, price: 520, weightIn: 6, minBait: 3, minRod: 3, minLine: 3,
+    weight: 14, price: 520, weightIn: 6, minBait: 3, minRod: 3, minLine: 3, minLevel: 5,
     palette: { body: '#4f8a52', belly: '#d8e0b0', fin: '#3a6b3e', eye: '#101020' },
     locations: ['rocky_shore', 'deep_ocean', 'coral_reef'],
   },
@@ -216,8 +234,14 @@ export const FISH = [
     locations: ['deep_ocean', 'coral_reef'],
   },
   {
+    id: 'baby_swordfish', name: 'Little Swordfish', archetype: 'slim', tier: 'common',
+    weight: 3.2, price: 90, weightIn: 12, minBait: 1, minRod: 2, minLine: 2, minLevel: 0,
+    palette: { body: '#6f92b0', belly: '#e8f0f8', fin: '#4a6b8a', eye: '#101020' },
+    locations: ['sunny_bay', 'rocky_shore', 'deep_ocean'],
+  },
+  {
     id: 'swordfish', name: 'Swordfish', archetype: 'shark', tier: 'rare',
-    weight: 12, price: 430, weightIn: 7, minBait: 3, minRod: 3, minLine: 3,
+    weight: 12, price: 430, weightIn: 7, minBait: 3, minRod: 3, minLine: 3, minLevel: 6,
     palette: { body: '#4a6b8a', belly: '#dfe9f2', fin: '#33506b', eye: '#101020' },
     locations: ['deep_ocean'],
   },
@@ -241,27 +265,53 @@ export const FISH = [
     joke: 'It pulled your boat three feet. Your boat has opinions now.',
   },
   {
+    id: 'baby_shark', name: 'Baby Shark', archetype: 'shark', tier: 'common',
+    weight: 3, price: 70, weightIn: 16, minBait: 1, minRod: 1, minLine: 1, minLevel: 0,
+    palette: { body: '#7fa8c4', belly: '#eef6fb', fin: '#5b86ad', eye: '#101020' },
+    locations: ['sunny_bay', 'rocky_shore'],
+    joke: 'It is small, but it is extremely confident about itself.',
+  },
+  {
+    id: 'nurse_shark', name: 'Nurse Shark', archetype: 'shark', tier: 'uncommon',
+    weight: 11, price: 300, weightIn: 9, minBait: 2, minRod: 3, minLine: 3, minLevel: 3,
+    palette: { body: '#8a94a0', belly: '#dfe6ec', fin: '#5f6b78', eye: '#101020' },
+    locations: ['rocky_shore', 'deep_ocean', 'coral_reef'],
+  },
+  {
     id: 'mako', name: 'Shortfin Mako', archetype: 'shark', tier: 'uncommon',
-    weight: 15, price: 480, weightIn: 9, minBait: 3, minRod: 3, minLine: 4,
+    weight: 15, price: 480, weightIn: 9, minBait: 3, minRod: 3, minLine: 4, minLevel: 5,
     palette: { body: '#3f6a8c', belly: '#eef4f9', fin: '#2b4a66', eye: '#101020' },
     locations: ['deep_ocean', 'the_abyss'],
   },
   {
+    id: 'great_white', name: 'Great White Shark', archetype: 'shark', tier: 'rare',
+    weight: 24, price: 1100, weightIn: 5, minBait: 4, minRod: 4, minLine: 5, minLevel: 8,
+    palette: { body: '#5b6f80', belly: '#eef2f5', fin: '#3a4a58', eye: '#101020' },
+    locations: ['deep_ocean', 'the_abyss'],
+  },
+  {
     id: 'basking_shark', name: 'Basking Shark', archetype: 'whale', tier: 'rare',
-    weight: 26, price: 900, weightIn: 5, minBait: 4, minRod: 4, minLine: 4,
+    weight: 26, price: 900, weightIn: 5, minBait: 4, minRod: 4, minLine: 4, minLevel: 7,
     palette: { body: '#5f6d78', belly: '#c9d3da', fin: '#414d57', eye: '#101020' },
     locations: ['deep_ocean'],
   },
   {
+    id: 'whale_shark', name: 'Whale Shark', archetype: 'whale', tier: 'legendary',
+    weight: 38, price: 2600, weightIn: 1.6, minBait: 5, minRod: 5, minLine: 5, minLevel: 10,
+    palette: { body: '#3f5a70', belly: '#cfdae4', fin: '#2a3f52', eye: '#101020', spot: '#8fb0c8' },
+    locations: ['deep_ocean', 'the_abyss'],
+    joke: 'It is the size of a bus and entirely uninterested in you.',
+  },
+  {
     id: 'humpback', name: 'Humpback Whale', archetype: 'whale', tier: 'legendary',
-    weight: 34, price: 2200, weightIn: 2, minBait: 5, minRod: 5, minLine: 5,
+    weight: 34, price: 2200, weightIn: 2, minBait: 5, minRod: 5, minLine: 5, minLevel: 11,
     palette: { body: '#3f4f63', belly: '#cfd8e0', fin: '#2b3746', eye: '#101020' },
     locations: ['deep_ocean', 'the_abyss'],
     joke: 'It sang for eleven minutes. You are not qualified to sell that.',
   },
   {
     id: 'manta_ray', name: 'Giant Manta Ray', archetype: 'ray', tier: 'legendary',
-    weight: 24, price: 1500, weightIn: 2, minBait: 4, minRod: 4, minLine: 4,
+    weight: 24, price: 1500, weightIn: 2, minBait: 4, minRod: 4, minLine: 4, minLevel: 9,
     palette: { body: '#3f4a5c', belly: '#dfe6ee', fin: '#2a3341', eye: '#101020', spot: '#7f8b9c' },
     locations: ['deep_ocean', 'the_abyss'],
   },
@@ -373,19 +423,25 @@ export const FISH = [
   },
   {
     id: 'gulper_eel', name: 'Gulper Eel', archetype: 'eel', tier: 'rare',
-    weight: 9, price: 450, weightIn: 9, minBait: 4, minRod: 4, minLine: 4,
+    weight: 9, price: 450, weightIn: 9, minBait: 4, minRod: 4, minLine: 4, minLevel: 9,
     palette: { body: '#3a2a3a', belly: '#5f4a5f', fin: '#241a24', eye: '#ff9b6b' },
     locations: ['the_abyss'],
   },
   {
+    id: 'baby_squid', name: 'Little Squid', archetype: 'squid', tier: 'uncommon',
+    weight: 3, price: 120, weightIn: 12, minBait: 2, minRod: 2, minLine: 2, minLevel: 0,
+    palette: { body: '#a85a68', belly: '#e08a96', fin: '#6f3340', eye: '#ffd45e' },
+    locations: ['sunny_bay', 'rocky_shore', 'deep_ocean', 'the_abyss'],
+  },
+  {
     id: 'colossal_squid', name: 'Colossal Squid', archetype: 'squid', tier: 'legendary',
-    weight: 22, price: 1700, weightIn: 2, minBait: 5, minRod: 5, minLine: 5,
+    weight: 22, price: 1700, weightIn: 2, minBait: 5, minRod: 5, minLine: 5, minLevel: 12,
     palette: { body: '#8f3a4a', belly: '#d16b7a', fin: '#5f2230', eye: '#ffd45e' },
     locations: ['the_abyss'],
   },
   {
     id: 'coelacanth', name: 'Coelacanth', archetype: 'slim', tier: 'legendary',
-    weight: 16, price: 2000, weightIn: 1, minBait: 5, minRod: 5, minLine: 5,
+    weight: 16, price: 2000, weightIn: 1, minBait: 5, minRod: 5, minLine: 5, minLevel: 13,
     palette: { body: '#3a6b8f', belly: '#8fb8d6', fin: '#e0b552', eye: '#101020', spot: '#e8d08a' },
     locations: ['the_abyss'],
   },
@@ -403,13 +459,13 @@ export const FISH = [
   },
   {
     id: 'viperfish', name: 'Viperfish', archetype: 'slim', tier: 'rare',
-    weight: 6, price: 500, weightIn: 6, minBait: 4, minRod: 4, minLine: 4,
+    weight: 6, price: 500, weightIn: 6, minBait: 4, minRod: 4, minLine: 4, minLevel: 8,
     palette: { body: '#1f2a3a', belly: '#3f4f66', fin: '#141c28', eye: '#ff6b6b', lure: '#a8ffdf' },
     locations: ['the_abyss'],
   },
   {
     id: 'frilled_shark', name: 'Frilled Shark', archetype: 'eel', tier: 'rare',
-    weight: 11, price: 700, weightIn: 4, minBait: 4, minRod: 4, minLine: 4,
+    weight: 11, price: 700, weightIn: 4, minBait: 4, minRod: 4, minLine: 4, minLevel: 10,
     palette: { body: '#5a6a72', belly: '#c8d2d8', fin: '#3d4a52', eye: '#ffd45e' },
     locations: ['the_abyss'],
   },
@@ -421,7 +477,7 @@ export const FISH = [
   },
   {
     id: 'abyssal_jelly', name: 'Abyssal Jelly', archetype: 'jelly', tier: 'legendary',
-    weight: 8, price: 1300, weightIn: 2, minBait: 5, minRod: 4, minLine: 5,
+    weight: 8, price: 1300, weightIn: 2, minBait: 5, minRod: 4, minLine: 5, minLevel: 11,
     palette: { body: '#2a3a5c', belly: '#5f7fa8', fin: '#1c2842', eye: '#a8ffdf' },
     locations: ['the_abyss'],
   },
@@ -613,19 +669,6 @@ export const UPGRADES = {
       { cost: 4000, label: 'Helideck Rig' },
       { cost: 16000, label: 'Research Platform' },
       { cost: 40000, label: 'The Ark' },
-    ],
-  },
-  finder: {
-    name: 'Fish Finder',
-    icon: 'finder',
-    desc: 'Reveals nearby rare fish and shows what is lurking below.',
-    levels: [
-      { cost: 0, label: 'None' },
-      { cost: 200, label: 'Crude Sonar' },
-      { cost: 800, label: 'Beeper' },
-      { cost: 2600, label: 'Depth Sounder' },
-      { cost: 9000, label: 'Thermal Scope' },
-      { cost: 30000, label: 'Precognition' },
     ],
   },
 };

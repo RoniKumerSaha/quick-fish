@@ -20,7 +20,7 @@ import {
   locationUnlockReason,
 } from './state.js';
 import {
-  PHASE, createSession, updateSession, rollCatch, xpFor, findNearbyRares,
+  PHASE, createSession, updateSession, rollCatch, xpFor,
 } from './fishing.js';
 
 import {
@@ -622,9 +622,6 @@ export class Game {
           this.buyUpgrade(result.track);
         }
       }
-
-      // The fish finder panel was removed — the water itself now shows
-      // what is swimming nearby, which reads better than a list of names.
 
       // Cast prompt
       if (!s && !this.popup) {

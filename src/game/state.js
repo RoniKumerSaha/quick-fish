@@ -13,7 +13,7 @@ export function newGameState() {
     coins: 150,
     xp: 0,
     level: 0,
-    upgrades: { rod: 0, line: 0, bait: 0, boat: 0, finder: 0 },
+    upgrades: { rod: 0, line: 0, bait: 0, boat: 0 },
     // Bait is unlimited — the shop still sells bait packs, but you can
     // always cast. This is the "relaxed" mode the game defaults to.
     bait: Infinity,

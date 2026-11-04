@@ -933,26 +933,6 @@ export function drawUpgradeIcon(ctx, key, x, y, lvl = 0) {
       ctx.fill();
       break;
     }
-    case 'finder': {
-      // A fish-finder sonar unit.
-      roundRect(ctx, 1, 3, 20, 18, 4, '#3d5a80');
-      roundRectStroke(ctx, 1, 3, 20, 18, 4, '#22354d', 1.5);
-      ctx.fillStyle = '#8fd8ff';
-      roundRect(ctx, 3, 5, 16, 13, 3, '#8fd8ff');
-      // Radar sweep.
-      ctx.strokeStyle = '#5fbf5a';
-      ctx.lineWidth = 1.6;
-      for (let i = 1; i <= 3; i++) {
-        ctx.beginPath();
-        ctx.arc(11, 12, i * 3.4, -2.2, 0.9);
-        ctx.stroke();
-      }
-      ctx.fillStyle = '#3d7fd6';
-      ctx.beginPath();
-      ctx.arc(11, 12, 2, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    }
   }
   ctx.restore();
 }

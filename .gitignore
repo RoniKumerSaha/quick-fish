@@ -5,6 +5,7 @@ playwright-report/
 screenshots/
 .puku/
 .vercel/
+dev/
 .DS_Store
 Thumbs.db
 *.log

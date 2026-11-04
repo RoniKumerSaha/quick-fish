@@ -12,7 +12,9 @@ import { clamp } from '../engine/gfx.js';
  * Pick the species for a cast at a location.
  *
  * Rarity weights are adjusted by bait level (better bait favours rarer fish)
- * and by fish finder (adds a flat bonus to rare+ weights).
+ * and by the player's experience — the "finder" bonus is now derived from
+ * level, so a seasoned angler pulls up bigger game without having to buy
+ * a separate upgrade track.
  *
  * Every location draws from its own pool *plus* a random handful of
  * "visiting" rare fish from anywhere, so a lucky cast can turn up a
@@ -20,7 +22,7 @@ import { clamp } from '../engine/gfx.js';
  */
 export function rollCatch(state, locationId, rng = Math.random) {
   const baitLvl = state.upgrades.bait;
-  const finderLvl = state.upgrades.finder;
+  const finderLvl = experienceBonus(state.level);
   const rodLvl = state.upgrades.rod;
   const lineLvl = state.upgrades.line;
 
@@ -29,11 +31,12 @@ export function rollCatch(state, locationId, rng = Math.random) {
     if (f.minBait > baitLvl) return false;
     if (f.minRod > rodLvl) return false;
     if (f.minLine > lineLvl) return false;
+    if (f.minLevel > state.level) return false;
     return true;
   });
 
   const locals = pool.length ? pool : [FISH_BY_ID.anchovy];
-  const visitors = visitingRares(locationId, rng, baitLvl, finderLvl, rodLvl, lineLvl);
+  const visitors = visitingRares(locationId, rng, baitLvl, finderLvl, rodLvl, lineLvl, state.level);
   const candidates = visitors.length ? locals.concat(visitors) : locals;
 
   // Weight multiplier by tier.
@@ -60,17 +63,32 @@ export function rollCatch(state, locationId, rng = Math.random) {
 }
 
 /**
+ * The "finder" bonus, derived from how experienced the angler is.
+ *
+ * This used to be the Fish Finder upgrade track. It is now tied to the
+ * player's level, so experience alone reveals bigger game — the upgrade
+ * menu no longer has a row to buy.
+ *
+ * @param {number} level  the player's level
+ * @returns {number} a bonus in roughly the same 0..5 range the old
+ *                    maxed finder used to provide
+ */
+export function experienceBonus(level) {
+  return Math.min(5, Math.floor((level || 0) / 4));
+}
+
+/**
  * Rare fish that have "wandered" into a location.
  *
  * A visiting fish is drawn from the rare/legendary pool of *other*
  * locations, so every spot can turn up something special. The chance grows
- * with the bait and fish-finder upgrades, and the travellers must still be
- * within the player's gear to be catchable.
+ * with the bait and the player's experience, and the travellers must still
+ * be within the player's gear and level to be catchable.
  *
  * @returns {object[]} the visiting fish (usually 0 or 1)
  */
-function visitingRares(locationId, rng, baitLvl, finderLvl, rodLvl, lineLvl) {
-  // 8% base chance, up to ~30% with a maxed finder and good bait.
+function visitingRares(locationId, rng, baitLvl, finderLvl, rodLvl, lineLvl, level = 0) {
+  // 8% base chance, up to ~30% with good bait and a high level.
   const chance = 0.08 + baitLvl * 0.028 + finderLvl * 0.038;
   if (rng() > chance) return [];
 
@@ -79,7 +97,8 @@ function visitingRares(locationId, rng, baitLvl, finderLvl, rodLvl, lineLvl) {
     (f.tier === 'rare' || f.tier === 'legendary') &&
     f.minBait <= baitLvl &&
     f.minRod <= rodLvl &&
-    f.minLine <= lineLvl);
+    f.minLine <= lineLvl &&
+    f.minLevel <= level);
 
   if (!candidates.length) return [];
 
@@ -87,36 +106,6 @@ function visitingRares(locationId, rng, baitLvl, finderLvl, rodLvl, lineLvl) {
   // the rare pool entirely.
   const pick = candidates[Math.floor(rng() * candidates.length) % candidates.length];
   return pick ? [pick] : [];
-}
-
-/**
- * The set of fish that could bite here, ignoring bait/rod gates.
- * Used by the fish finder to show "nearby rare fish".
- *
- * Locals come first; if a spot has no rare residents of its own (Sunny
- * Bay, for one) the uncommon locals stand in, so the finder always has
- * something to report.
- */
-export function findNearbyRares(state, locationId, count = 3, rng = Math.random) {
-  const rare = FISH.filter((f) =>
-    f.locations.includes(locationId) &&
-    (f.tier === 'rare' || f.tier === 'legendary'));
-
-  // Fall back to the uncommon residents when there are no rare ones.
-  const locals = rare.length ? rare : FISH.filter((f) =>
-    f.locations.includes(locationId) && f.tier === 'uncommon');
-
-  const shuffled = locals.slice().sort(() => rng() - 0.5);
-  const local = shuffled.slice(0, count);
-
-  // Then whatever is currently swimming through from elsewhere.
-  const visitors = FISH.filter((f) =>
-    !f.locations.includes(locationId) &&
-    (f.tier === 'rare' || f.tier === 'legendary'))
-    .sort(() => rng() - 0.5)
-    .slice(0, count);
-
-  return local.concat(visitors);
 }
 
 // --------------------------------------------------------------- minigame
@@ -204,9 +193,10 @@ export function updateSession(s, state, dt, holding, rng = Math.random, events =
       if (s.timer >= s.waitTime) {
         s.phase = PHASE.BITE;
         s.timer = 0;
-        // Bite window: how long the player has to react.
-        const finderLvl = state.upgrades?.finder || 0;
-        s.biteWindow = clamp(1.35 - finderLvl * 0.06, 0.75, 1.4);
+        // Bite window: how long the player has to react. An experienced
+        // angler spots the bite sooner.
+        const exp = experienceBonus(state.level);
+        s.biteWindow = clamp(1.35 - exp * 0.06, 0.75, 1.4);
         events.onBite?.();
       }
       break;
