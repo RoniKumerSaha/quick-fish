@@ -30,7 +30,8 @@ import {
 import {
   drawHUD, drawLog, drawCatchPopup, drawTensionMeter, drawUpgrades, drawShop,
   drawCollection, drawLocationSelect, drawHint, drawCastPrompt,
-  dim, travelRows, W, H, withClip,
+  dim, travelRows, actionBarChips, fullscreenButtonRect, upgradeBuyButtons,
+  W, H, withClip,
 } from '../render/ui.js';
 import {
   drawFish, drawSparkle, drawOilRig, drawFisherman, drawRod, FISH_SNOUT,
@@ -180,20 +181,99 @@ export class Game {
     if (input.pressed('m')) this.goto(SCREEN.TRAVEL);
     if (input.pressed('Tab')) this.goto(SCREEN.STATS);
 
+    // A click that landed on a HUD control is a button press, not a cast.
+    // The press itself is acted on in the render pass — which runs on every
+    // frame, unlike the simulation, which can skip a frame entirely. All
+    // this does is stop the same click from also casting a line.
+    const onHud = this.pointerOnHud();
+
     if (this.session) {
       this.updateSession(dt);
       return;
     }
 
     // Idle: casting. Bait is unlimited, so you can always cast.
-    if ((input.pressed(' ') || input.mouse.justDown) && !this.popup) {
+    if (!onHud && (input.pressed(' ') || input.mouse.justDown) && !this.popup) {
       this.cast();
     }
 
     // Escape / popup dismissal
-    if (this.popup && (input.pressed(' ', 'Enter') || input.mouse.justDown)) {
+    if (this.popup && (input.pressed(' ', 'Enter') || (input.mouse.justDown && !onHud))) {
       this.popup = null;
       this.popupTimer = 0;
+    }
+  }
+
+  /**
+   * Whether the mouse press this frame landed on a HUD control.
+   *
+   * The bottom action bar, the fullscreen toggle and the upgrade "buy"
+   * buttons are the only clickable furniture on the fishing screen, so they
+   * are the only things that can swallow a click before it reaches the
+   * water. Clicking one of them must not also cast a line.
+   *
+   * @returns {boolean}
+   */
+  pointerOnHud() {
+    const input = this.input;
+    if (!input.mouse.justDown) return false;
+
+    const m = input.mouse;
+    const over = (r) => m.x >= r.x && m.x < r.x + r.w && m.y >= r.y && m.y < r.y + r.h;
+
+    // The fullscreen toggle in the top bar.
+    if (over(fullscreenButtonRect(getLocation(this.state).name))) return true;
+
+    // The bottom action bar — but only while it is actually on screen.
+    if (!this.reeling()) {
+      for (const c of actionBarChips(this.showUpgrades)) {
+        if (over(c)) return true;
+      }
+    }
+
+    // The upgrade "buy" buttons, when the upgrades panel is open.
+    if (this.showUpgrades && !this.reeling()) {
+      for (const b of upgradeBuyButtons(upgradesPanel())) {
+        if (over(b)) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Whether a fish is currently on the line.
+   */
+  reeling() {
+    return !!(this.session && this.session.phase === PHASE.HOOKED);
+  }
+
+  /**
+   * Perform the action behind a clicked HUD control.
+   */
+  activateChip(chip) {
+    switch (chip.action) {
+      case 'upgrades':
+        this.showUpgrades = !this.showUpgrades;
+        audio.ui();
+        break;
+      case 'shop':
+        this.goto(SCREEN.SHOP);
+        break;
+      case 'collection':
+        this.goto(SCREEN.COLLECTION);
+        break;
+      case 'travel':
+        this.goto(SCREEN.TRAVEL);
+        break;
+      case 'stats':
+        this.goto(SCREEN.STATS);
+        break;
+      case 'fullscreen':
+        if (this.onFullscreen) this.onFullscreen();
+        break;
+      case 'buy':
+        this.buyUpgrade(chip.track);
+        break;
     }
   }
 
@@ -525,6 +605,7 @@ export class Game {
     });
     if (hud && hud.action === 'fullscreen' && this.onFullscreen) {
       this.onFullscreen();
+      this.input.consumeMousePress();
     }
 
     // --- Panels on the right (upgrades) when fishing
@@ -716,29 +797,28 @@ export class Game {
       return;
     }
 
-    const items = [
-      { key: 'U', label: this.showUpgrades ? 'Hide upgrades' : 'Upgrades' },
-      { key: 'S', label: 'Market' },
-      { key: 'C', label: 'Collection' },
-      { key: 'M', label: 'Travel' },
-      { key: 'Tab', label: 'Stats' },
-    ];
-    let x = 12;
+    const items = actionBarChips(this.showUpgrades);
     for (const it of items) {
-      const label = `${it.key}: ${it.label}`;
-      const w = textWidth(label, 14, 700) + 24;
-      const hovering = this.input.mouse.x >= x && this.input.mouse.x < x + w &&
-        this.input.mouse.y >= y && this.input.mouse.y < y + 30;
-      chip(ctx, x, y, w, 30, {
+      const hovering = this.input.mouse.x >= it.x && this.input.mouse.x < it.x + it.w &&
+        this.input.mouse.y >= it.y && this.input.mouse.y < it.y + it.h;
+      chip(ctx, it.x, it.y, it.w, it.h, {
         fill: hovering ? '#3d6a9c' : '#2b4a72',
         light: hovering ? '#7fb0e0' : '#5b86b4',
         dark: '#16283f',
         radius: 8,
       });
-      drawText(ctx, label, x + 12, y + 7, {
+      drawText(ctx, it.label, it.x + 12, it.y + 7, {
         color: hovering ? '#ffffff' : '#dbe8f5', size: 14, weight: 700,
       });
-      x += w + 8;
+
+      // The chip is a real button, not just a keyboard hint — clicking it
+      // opens the panel. Handled here, in the render pass, because that runs
+      // on every frame; the simulation can skip one entirely.
+      if (hovering && this.input.mouse.justDown) {
+        this.activateChip({ action: it.action });
+        this.input.consumeMousePress();
+        break;
+      }
     }
   }
 

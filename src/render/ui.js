@@ -35,6 +35,51 @@ function fitText(str, maxW, size = 14, weight = 700) {
 // -------------------------------------------------------------------- button
 
 /**
+ * The chips in the bottom action bar.
+ *
+ * The layout is shared between the render pass, which draws the chips, and
+ * the update pass, which has to recognise that a click landed on one so it
+ * does not *also* cast a line. Both passes therefore call this, and the
+ * rectangles are always in sync.
+ *
+ * @param {boolean} upgradesOpen  whether the upgrades panel is currently shown
+ * @returns {Array<{action:string,label:string,x:number,y:number,w:number,h:number}>}
+ */
+export function actionBarChips(upgradesOpen = false) {
+  const items = [
+    { action: 'upgrades', key: 'U', label: upgradesOpen ? 'Hide upgrades' : 'Upgrades' },
+    { action: 'shop', key: 'S', label: 'Market' },
+    { action: 'collection', key: 'C', label: 'Collection' },
+    { action: 'travel', key: 'M', label: 'Travel' },
+    { action: 'stats', key: 'Tab', label: 'Stats' },
+  ];
+  const y = H - 42;
+  let x = 12;
+  return items.map((it) => {
+    const label = `${it.key}: ${it.label}`;
+    const w = textWidth(label, 14, 700) + 24;
+    const chip = { action: it.action, label, x, y, w, h: 30 };
+    x += w + 8;
+    return chip;
+  });
+}
+
+/**
+ * Where the HUD's fullscreen toggle sits, given the location name shown
+ * next to it. Shared with the update pass for the same reason as
+ * `actionBarChips`.
+ *
+ * @param {string} locName
+ */
+export function fullscreenButtonRect(locName) {
+  const nw = Math.max(textWidth(locName, 17, 800), 90) + 74;
+  const nx = W - nw - 10;
+  const size = 30;
+  return { x: nx - 38, y: 8, w: size, h: size };
+}
+
+
+/**
  * A rounded green "buy" button, in the style of the reference art.
  * Returns true when clicked this frame.
  */
@@ -167,7 +212,8 @@ export function drawHUD(ctx, state, loc, t, opts = {}) {
   const plaqueY = 3;
 
   // Fullscreen toggle, tucked just to the left of the location plaque.
-  const fsClicked = drawFullscreenButton(ctx, opts.fullscreen, opts.input, nx - 38);
+  const fsRect = fullscreenButtonRect(name);
+  const fsClicked = drawFullscreenButton(ctx, opts.fullscreen, opts.input, fsRect.x);
 
   roundRect(ctx, nx, plaqueY, nw, plaqueH, 10, 'rgba(14,36,66,0.94)');
   roundRectStroke(ctx, nx + 0.5, plaqueY + 0.5, nw - 1, plaqueH - 1, 10, 'rgba(130,185,240,0.55)', 1.5);
@@ -669,6 +715,31 @@ export function drawTensionMeter(ctx, s, t, rect_ = { x: 648, y: 44, w: 300, h: 
 // -------------------------------------------------------------------- panels
 
 /**
+ * The geometry of the "buy" button on each upgrade row.
+ *
+ * The render pass draws these and the update pass has to recognise a click
+ * on one, so both go through this list.
+ *
+ * @param {object} rect_  the panel rectangle
+ * @returns {Array<{track:string,x:number,y:number,w:number,h:number}>}
+ */
+export function upgradeBuyButtons(rect_) {
+  const { x, y, w } = rect_;
+  const tracks = Object.keys(UPGRADES);
+  const rowH = 52;
+  // The panel's own inset: the header strip is 30 tall and the body starts
+  // 10 below it.
+  let rowY = y + 1 + 30 + 10;
+  const out = [];
+  for (const key of tracks) {
+    const btnW = 88, btnH = 30;
+    out.push({ track: key, x: x + w - btnW - 12, y: rowY + 2, w: btnW, h: btnH });
+    rowY += rowH;
+  }
+  return out;
+}
+
+/**
  * The upgrades panel (right side, as in the reference art).
  */
 export function drawUpgrades(ctx, state, input, t, rect_) {
@@ -684,6 +755,7 @@ export function drawUpgrades(ctx, state, input, t, rect_) {
   const rowH = 52;
   let rowY = p.bodyY;
   let action = null;
+  const buyButtons = upgradeBuyButtons(rect_);
 
   for (const key of tracks) {
     const up = UPGRADES[key];
@@ -724,8 +796,9 @@ export function drawUpgrades(ctx, state, input, t, rect_) {
         color: THEME.greenDark, align: 'right', size: 15, weight: 800,
       });
     } else {
-      const btnW = 88, btnH = 30;
-      const bx = p.x + p.w - btnW - 12, by = rowY + 2;
+      const btn = buyButtons.find((b) => b.track === key);
+      const bx = btn.x, by = btn.y;
+      const btnW = btn.w, btnH = btn.h;
       miniButton(ctx, input, {
         x: bx, y: by, w: btnW, h: btnH,
         enabled: affordable,

@@ -153,6 +153,17 @@ export class Input {
     return this.pressed(' ') || this.mouse.clicked;
   }
 
+  /**
+   * Mark this frame's mouse press as handled.
+   *
+   * The simulation runs at a fixed timestep and may take several steps in a
+   * single rendered frame, so a press that a UI element consumes has to be
+   * cleared or the next step would see it again and act on it twice.
+   */
+  consumeMousePress() {
+    this.mouse.justDown = false;
+  }
+
   /** Clear one-frame flags. Call at the very end of the frame. */
   endFrame() {
     this.justPressed.clear();
